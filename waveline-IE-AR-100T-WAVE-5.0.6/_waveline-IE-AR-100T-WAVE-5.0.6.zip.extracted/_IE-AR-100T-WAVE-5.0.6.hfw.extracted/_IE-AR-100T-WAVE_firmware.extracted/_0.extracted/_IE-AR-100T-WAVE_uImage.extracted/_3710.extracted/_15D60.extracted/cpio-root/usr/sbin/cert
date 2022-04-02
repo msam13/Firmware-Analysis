@@ -1,0 +1,299 @@
+#!/bin/sh
+
+source /tmp/ulsp/vpnca.config
+PWD=$(pwd)
+IPSEC_CERT_PATH=/tmp/keys/ipsec
+NAME_OPT=oneline,-esc_msb
+
+
+# Check for existing CA config path
+if [ ! -d $CA_CNF_PATH ]; then
+   echo "CA: The default CA configuration could not be found!"
+   exit 1;
+fi
+
+# Check for existing certificate store
+if [ ! -d $CA_CRT_PATH ]; then
+   mkdir $CA_CRT_PATH;
+fi
+
+
+cert_help () {
+  echo "WaveLine-Router Certificate Authority"
+  echo "Usage: 'cert gen <object> <pass 1..2>' what's the CAs job:"
+  echo "                 <root>    <Security Officer pass>             : generate the root certificate."
+  echo "                 <dhp>                                         : generate Diffie Hellman parameters."
+  echo "                 <gateway> <Security Officer pass> <User pass> : generate the gateway certificate."
+  echo "                 <peer>    <Security Officer pass> <User pass> : generate the peer certificate."
+  echo ""
+  echo "       'cert update <object> <pass 1..2>' what to update is:"
+  echo "                    <crl>    <Security Officer pass>           : updates the CA date base."
+  echo ""
+  echo "       'cert extract <object> <object file> <User pass> what to extract is:'"
+  echo "                    <p12>     <p12 filename> <p12 passphrase> <target path>  : extract the CA cert; the peer cert; the peer key of a PKCS#12 package."
+  echo ""
+  echo "ATTENTION!"
+  echo "  Check the system for correct date/time:"
+  echo "  i.e. correct it with 'date -s 030303032009'"
+  date
+  echo ""
+}
+
+cert_generate_dhp() {
+  cd $CA_CRT_PATH
+
+  echo "  CA: This will last for aproximately 15 minutes!"
+  openssl dhparam -out $CA_CRT_PATH/$X509_GW_DHP $X509_CA_BIT
+  [ ! $? -eq 0 ] && exit $?
+
+  echo "  CA: ATTENTION! Make sure that the DH parameters was saved permanently !!!"
+  echo "      Otherwise the DH parameters will be lost after a next Soft or Hard RESET!"
+#  echo "  CA: Saving the Diffie Hellman parameters."
+#  /usr/sbin/save certs
+}
+
+cert_generate_root() {
+  cd $CA_CRT_PATH
+  #date -s 030303032009
+
+  echo "  CA: Initialize the Root CA serial number generator."
+  echo -ne '01' > $CA_CRT_PATH/$X509_CA_SER
+  # The CA database blocks certs with the same subject by default:
+  echo -ne 'unique_subject = no' > $CA_CRT_PATH/$X509_CA_DBA
+
+  [ -f $CA_CRT_PATH/$X509_CA_CDB ] && rm -f $CA_CRT_PATH/$X509_CA_CDB
+  touch $CA_CRT_PATH/$X509_CA_CDB
+
+  echo "  CA: Generate the key pair for the Root CA."
+  openssl genrsa -des3 -passout pass:$CA_SO_PASS -out $CA_CRT_PATH/$X509_CA_KEY $X509_CA_BIT
+  [ ! $? -eq 0 ] && exit $?
+
+  echo "  CA: Generate the Certificate Signing Request (CSR) for the Root CA."
+  openssl req -batch -days $X509_CA_DAY -new -newhdr -config $CA_CNF_PATH/$X509_CA_CFG \
+              -utf8 -passin pass:$CA_SO_PASS -key $CA_CRT_PATH/$X509_CA_KEY \
+              -nameopt $NAME_OPT \
+              -outform PEM -out $CA_CRT_PATH/$X509_CA_CSR
+  [ ! $? -eq 0 ] && exit $?
+
+  echo "  CA: Generate the Root CA's Certificate."
+  openssl x509 -passin pass:$CA_SO_PASS -days $X509_CA_DAY \
+               -extfile $CA_CNF_PATH/$X509_CA_EXT \
+               -signkey $CA_CRT_PATH/$X509_CA_KEY \
+               -in $CA_CRT_PATH/$X509_CA_CSR \
+               -req -outform PEM \
+               -out $CA_CRT_PATH/$X509_CA_CRT
+  [ ! $? -eq 0 ] && exit $?
+
+  echo "  CA: Generate the Certificate Revocation List (CRL)"
+  openssl ca -gencrl -utf8 -passin pass:$CA_SO_PASS -config $CA_CNF_PATH/$X509_CA_CRC \
+             -out $CA_CRT_PATH/$X509_CA_CRL
+  [ ! $? -eq 0 ] && exit $?
+
+  echo "  CA: ATTENTION! Make sure that the Root CA's certificate was saved permanently !!!"
+  echo "      Otherwise the Root CA's certificate will be lost after a next Soft or Hard RESET!"
+#  echo "  CA: Saving the Root CA's Certificate."
+#  /usr/sbin/save certs
+}
+
+cert_generate_gateway() {
+  cd $CA_CRT_PATH
+
+  echo "  CA: Generate the the VPN gateway key."
+  #openssl genrsa -des3 -passout pass:$CA_SU_PASS -out $CA_CRT_PATH/$X509_GW_KEY $X509_CA_BIT
+  openssl genrsa -out $CA_CRT_PATH/$X509_GW_KEY $X509_CA_BIT
+  [ ! $? -eq 0 ] && exit $?
+
+  echo "  CA: Generate the Certificate Signing Request (CSR) for the VPN gateway."
+  openssl req -batch -utf8 -passin pass:$CA_SU_PASS -config $CA_CNF_PATH/$X509_GW_CFG \
+              -new -newhdr -days $X509_GW_DAY -key $CA_CRT_PATH/$X509_GW_KEY -nameopt $NAME_OPT \
+              -outform PEM -out $CA_CRT_PATH/$X509_GW_CSR
+  [ ! $? -eq 0 ] && exit $?
+
+  echo "  CA: Signing the VPN gateway certificate request."
+  openssl ca -batch -utf8 -passin pass:$CA_SO_PASS -config $CA_CNF_PATH/$X509_CA_CRC \
+             -in $CA_CRT_PATH/$X509_GW_CSR -days $X509_GW_DAY \
+             -extensions xpserver_ext -extfile $CA_CNF_PATH/$X509_GW_EXT \
+             -out $CA_CRT_PATH/$X509_GW_CRT
+  [ ! $? -eq 0 ] && exit $?
+
+  echo "  CA: Decrypt the VPN gateway key."
+  openssl rsa -passin pass:$CA_SU_PASS -in $CA_CRT_PATH/$X509_GW_KEY \
+              -out $CA_CRT_PATH/$X509_GW_PKY
+  [ ! $? -eq 0 ] && exit $?
+
+#  echo "  CA: Export the VPN gateway certificate structure into a PKCS#12 package."
+#  openssl pkcs12 -export -inkey $X509_GW_KEY -in $X509_GW_CRT \
+#                 -certfile $CA_CRT_PATH/$X509_CA_CRT \
+#                 -caname $CA_P12_NAME \
+#                 -name $CA_P12_NAME \
+#                 -passin pass:$CA_SU_PASS \
+#                 -passout pass:$CA_SU_PASS \
+#                 -out $CA_CRT_PATH/$X509_GW_P12
+#  [ ! $? -eq 0 ] && exit $?
+
+  echo "  CA: ATTENTION! Make sure that the VPN gateway certificate was saved permanently!"
+  echo "      Otherwise the VPN gateway certificate will be lost after a next Soft or Hard RESET!"
+#  echo "  CA: Saving the VPN gateway certificate."
+#  /usr/sbin/save certs
+}
+
+cert_generate_peer() {
+  cd $CA_CRT_PATH
+
+  echo "  CA: Generate the key for the VPN peer."
+  openssl genrsa -des3 -passout pass:$CA_SU_PASS -out $CA_CRT_PATH/$X509_PR_KEY $X509_CA_BIT
+  [ ! $? -eq 0 ] && exit $?
+
+  echo "  CA: Generate the Certificate Signing Request (CSR) for the VPN peer."
+  openssl req -batch -utf8 -passin pass:$CA_SU_PASS -config $CA_CNF_PATH/$X509_PR_CFG \
+              -new -newhdr -days $X509_PR_DAY -outform PEM -nameopt $NAME_OPT \
+              -key $CA_CRT_PATH/$X509_PR_KEY -out $CA_CRT_PATH/$X509_PR_CSR
+  [ ! $? -eq 0 ] && exit $?
+
+  echo "  CA: Signing the VPN peer certificate request."
+  openssl ca -batch -utf8 -passin pass:$CA_SO_PASS -config $CA_CNF_PATH/$X509_CA_CRC \
+             -in $CA_CRT_PATH/$X509_PR_CSR -days $X509_PR_DAY \
+             -extensions xpclient_ext -extfile $CA_CNF_PATH/$X509_PR_EXT \
+             -out $CA_CRT_PATH/$X509_PR_CRT
+  [ ! $? -eq 0 ] && exit $?
+
+  echo "  CA: Export the VPN peer certificate structure into a PKCS#12 package."
+  openssl pkcs12 -export -inkey $CA_CRT_PATH/$X509_PR_KEY \
+                 -in $CA_CRT_PATH/$X509_PR_CRT \
+                 -certfile $CA_CRT_PATH/$X509_CA_CRT \
+                 -caname $CA_P12_NAME \
+                 -name $CA_P12_NAME \
+                 -passin pass:$CA_SU_PASS \
+                 -passout pass:$CA_SU_PASS \
+                 -out $CA_CRT_PATH/$X509_PR_P12
+  [ ! $? -eq 0 ] && exit $?
+}
+
+cert_update_crl() {
+  # The prestep of this function is to edit the CA DB ($X509_CA_CDB) and change 
+  # the state of a certificate from V to R or from R to V. 
+  # In the case of 'V to R' (Revoking), a UTC formatted date time string must 
+  # be inserted on tab[2]!
+  # In the case of 'R to V' (Unrevoking), the UTC formatted date time string 
+  # on tab[2] must be removed!
+
+  cd $CA_CRT_PATH
+
+  echo "  CA: Renew the Certificate Revocation List (CRL):"
+  openssl ca -gencrl -passin pass:$CA_SO_PASS -config $CA_CNF_PATH/$X509_CA_CRC \
+             -out $CA_CRT_PATH/$X509_CA_CRL
+  [ ! $? -eq 0 ] && exit $?
+
+#  echo "  CA: The content of the new Certificate Revocation List (CRL):"
+#  openssl crl -in $CA_CRT_PATH/$X509_CA_CRL -text
+#  [ ! $? -eq 0 ] && exit $?
+
+  echo "  CA: ATTENTION! Make sure that the CRL was saved permanently !!!"
+  echo "      Otherwise all changes will be lost after a next Soft or Hard RESET!"
+}
+
+
+cert_extract_p12() {
+  openssl pkcs12 -in $X509_PR_P12 -passin pass:$CA_SU_PASS -cacerts -nokeys -out $TMP_TARGET_PATH/$X509_CA_CRT
+  openssl pkcs12 -in $X509_PR_P12 -passin pass:$CA_SU_PASS -clcerts -nokeys -out $TMP_TARGET_PATH/$X509_PR_CRT
+  openssl pkcs12 -in $X509_PR_P12 -passin pass:$CA_SU_PASS -nocerts -nodes -out $TMP_TARGET_PATH/$X509_PR_KEY
+}
+
+
+info_subject() {
+  echo "  CA: Get the subject of the peer certificate:"
+  openssl x509 -in $2 -noout -subject
+  [ ! $? -eq 0 ] && exit $?
+}
+
+if [ -z $1 ]
+then
+  cert_help
+  exit 1
+fi
+
+# Now we get the Security Officers password:
+[ ! "$3" = "" ] && CA_SO_PASS=$3
+# Now we get the Security Users password:
+[ ! "$4" = "" ] && CA_SU_PASS=$4
+
+case $1 in
+  gen)
+    case $2 in
+      root)
+        # Now we get the Security Officers password:
+        [ ! "$3" = "" ] && CA_SO_PASS=$3 || echo "CA: The SO password was not given."
+        echo "CA: Generating the IE-AR-100T-WAVE Root CA certificate:"
+        cert_generate_root
+      ;;
+      dhp)
+        echo "CA: Generating the Diffie Hellman parameters:"
+        cert_generate_dhp
+      ;;
+      gateway)
+        # Now we get the Security Officers password:
+        [ ! "$3" = "" ] && CA_SO_PASS=$3 || echo "CA: The SO password was not given."
+        # Now we get the Security Users password:
+        [ ! "$4" = "" ] && CA_SU_PASS=$4 || echo "CA: The SU password was not given."
+        echo "CA: Generating the VPN gateway certificate:"
+        cert_generate_gateway
+      ;;
+      peer)
+        # Now we get the Security Officers password:
+        [ ! "$3" = "" ] && CA_SO_PASS=$3 || echo "CA: The SO password was not given."
+        # Now we get the Security Users password:
+        [ ! "$4" = "" ] && CA_SU_PASS=$4 || echo "CA: The SU password was not given."
+        echo "CA: Generating a VPN peer certificate:"
+        cert_generate_peer
+      ;;
+      *)
+        echo "CA: ATTENTION!"
+        echo "    Check the correct device date/time !!!"
+        date
+      ;;
+    esac
+  ;;
+  update)
+    case $2 in
+      crl)
+        # Now we get the Security Officers password:
+        [ ! "$3" = "" ] && CA_SO_PASS=$3 || echo "CA: The SO password was not given."
+        echo "CA: Updating the Certificate Revocation List:"
+        cert_update_crl
+      ;;
+      *)
+        echo "CA: ATTENTION!"
+        echo "    Check the correct device date/time !!!"
+        date
+      ;;
+    esac
+  ;;
+  extract)
+    case $2 in
+      p12)
+        # Now we get the Security Users password:
+        [ ! "$4" = "" ] && CA_SU_PASS=$4 || echo "CA: The SU password was not given."
+        # Now we get the target path for PKCS#12 extraction:
+        [ ! "$5" = "" ] && TMP_TARGET_PATH=$5 || echo "CA: The target path was not given."
+        echo "CA: Extracting the content of a PKCS#12 package:"
+        cert_extract_p12
+      ;;
+      *)
+        echo "CA: ATTENTION!"
+        echo "    Check the correct device date/time !!!"
+        date
+      ;;
+    esac
+  ;;
+  check)
+  ;;
+  info)
+    info_subject
+  ;;
+  *)
+    echo "CA: Unknown arg $i";
+    echo ""
+    cert_help
+    exit 1
+  ;;
+esac

@@ -1,0 +1,42 @@
+# define dialout device
+# values: 'none', 'ttyS1', 'ttyS2', 'eth0', 'eth1'
+DIALOUT_DEV='none'
+
+# define dialout MTU (maximum transmit unit)
+# value: 1-1500
+DIALOUT_MTU='576'
+
+# define dialout MRU (maximum receive unit)
+# value: 1-1500
+DIALOUT_MRU='576'
+
+# AT commands to pass to the modem
+# value: any valid list of AT commands
+DIALOUT_MODEM_CMD='L0M0X3'
+
+# Dialout ISP list
+# Number of elements in list
+DIALOUT_ISP_N='1'
+DIALOUT_ISP_1_NAME='MSN'
+DIALOUT_ISP_1_USER='msn'
+DIALOUT_ISP_1_PASS='msn'
+DIALOUT_ISP_1_NUM='0,0192658'
+
+# currently selected ISP
+# values: one of the above configured ISPs
+DIALOUT_ISP_ACTIVE='1'
+
+# disconnect idle time in seconds
+# value: 0 for disable, 1-300
+DIALOUT_IDLE_TIME='80'
+
+# number of DialOut retries
+# values: between '0' and '100', 0 means infinite
+DIALOUT_RETRIES='1'
+
+# Time between dialout failure and retry in seconds
+# values: between '0' and '300'
+DIALOUT_RETRY_DELAY='30'
+
+# GPRS DialOut specific data
+DIALOUT_GPRS_APN=''

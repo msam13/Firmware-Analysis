@@ -1,0 +1,47 @@
+# SNMP system name
+# value: string, 5 to 127 characters
+SNMP_SYSNAME=''
+
+# SNMP system location
+# value: string, 5 to 127 characters
+SNMP_SYSLOCATION='Detmold'
+
+# SNMP system contact (email)
+# value: string, 5 to 32 characters
+SNMP_SYSCONTACT='info@weidmueller.com'
+
+# SNMP read only community 
+# value: string, 5 to 32 characters
+SNMP_ROCOMMUNITY='public'
+
+# SNMP read/write community 
+# value: string, 5 to 32 characters
+SNMP_RWCOMMUNITY='private'
+
+# SNMP trap community 
+# value: string, 5 to 32 characters
+SNMP_TRAPCOMMUNITY='public'
+
+# SNMP trap receiver count
+# value: number of configured trap receivers
+SNMP_TRAPSINK_N='0'
+
+# SNMPv3 user
+# value: string, 5 to 32 characters
+SNMP_V3USER='admin'
+
+# SNMPv3 authentication type
+# value: 'MD5', 'SHA'
+SNMP_V3AUTHTYPE='MD5'
+
+# SNMPv3 authentication password
+# value: string, at least 8 characters
+SNMP_V3AUTHPASS='detmold08'
+
+# SNMPv3 privacy protocol
+# value: 'DES', 'AES'
+SNMP_V3PRIVPROT='DES'
+
+# SNMPv3 privacy password
+# value: string, at least 8 characters
+SNMP_V3PRIVPASS='detmold08'

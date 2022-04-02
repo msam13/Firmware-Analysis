@@ -1,0 +1,128 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta name="author" content="Henry Jesuiter, Enrico Kalliwoda">
+<meta name="description" content="English toc-page of the IAR / Heyfra GmbH">
+<meta name="date" content="2005-06-10 11:00:00">
+<meta http-equiv="expires" content="0">
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<title>Dialin-Konfiguration Modem 1</title>
+<link rel="stylesheet" type="text/css" href="css/stile.css" media="screen">
+<script src="deutsc/auxfunc.js" type="text/javascript"></script>
+<script type="text/javascript">
+<!--
+  function checkValues() {
+    /*
+    if(document.dialinForm.modem.checked == true) {
+      var pass=document.dialinForm.Pass.value;
+      var passRe=document.dialinForm.PassRe.value;
+
+      if(pass != passRe) {
+        alert("Die Passwoerter sind nicht identisch. Bitte ueberpruefen!");
+      } else {
+        if(document.dialinForm.dialin[0].checked == true) {
+          var pip=document.dialinForm.PIP.value;
+          var lip=document.dialinForm.LIP.value;
+
+          if(isValidIP(pip) && isValidIP(lip)) {
+            document.dialinForm.submit();
+          }
+	} else {
+	  //document.dialinForm.PIP.value="10.10.10.10"
+	  //document.dialinForm.LIP.value="11.11.11.11";
+          document.dialinForm.submit();
+	}
+      }
+    } else {
+      document.dialinForm.submit();
+    }
+     */
+    document.dialinForm.submit();
+  }
+
+function enableForm() {
+  if(document.dialinForm.dialin_dev.options[0].selected == true) {
+    document.dialinForm.mode[0].disabled=true;
+    document.dialinForm.mode[1].disabled=true;
+    document.dialinForm.user.disabled=true;
+    document.dialinForm.pass.disabled=true;
+    document.dialinForm.passRe.disabled=true;
+    document.dialinForm.initat.disabled=true;
+    document.dialinForm.localip.disabled=true;
+    document.dialinForm.peerip.disabled=true;
+    document.dialinForm.masq.disabled=true;
+  } else {
+    document.dialinForm.mode[0].disabled=false;
+    document.dialinForm.mode[1].disabled=false;
+    document.dialinForm.user.disabled=false;
+    document.dialinForm.pass.disabled=false;
+    document.dialinForm.passRe.disabled=false;
+    document.dialinForm.initat.disabled=false;
+    document.dialinForm.localip.disabled=false;
+    document.dialinForm.peerip.disabled=false;
+    document.dialinForm.masq.disabled=false;
+  }
+}
+
+//-->
+</script>
+</head>
+<body>
+<form action="config.cgi" method="post" target="Main" name="dialinForm">
+<input type="hidden" name="lang" value="deutsc">
+<input type="hidden" name="item" value="11">
+<input type="hidden" name="act" value="1">
+
+{NO_DIALIN_MESSAGE}
+
+<div id="dialinParam" style="visibility:{DIALIN_VISIBILITY};">
+<fieldset><legend>Modemoptionen</legend>
+<table>
+<tr>
+   <td> DialIn-Modem </td> 
+   <td> <select name="dialin_dev" size="1" onchange=enableForm()> {DIALIN_DEV} </select></td>
+</tr>
+<tr>
+   <td> DialIn-Modus </td> 
+   <td colspan=3>{DIALIN_MODE}</td>
+</tr>
+<tr>
+  <td>Benutzername</td>
+  <td><input type="text" size="20" maxlength="20" name="user" value="{USER}" {ALLOW}></td>
+  <td colspan="2">Benutzername f&uuml;r Dial-in/Callback </td>
+</tr>
+<tr>
+  <td>Passwort </td>
+  <td><input type="password" size="20" maxlength="8" name="pass" value="" {ALLOW}></td>
+  <td colspan="2">wiederholt<input type="password" size="20" maxlength="8" name="passRe" value="" {ALLOW}>(max. 8 Zeichen)</td>
+</tr>
+<tr>
+  <td>AT-Kommando</td>
+  <td colspan="3"><input type="text" size="20" maxlength="63" name="initat" value="{INIT_AT}" {ALLOW}></td>
+</tr>
+<tr>
+  <td>lokale IP</td>
+  <td><input type="text" size="20" maxlength="15" name="localip" value="{LOCAL_IP}" {ALLOW}></td>
+</tr>
+<tr>
+  <td>peer IP</td>
+  <td><input type="text" size="20" maxlength="15" name="peerip" value="{PEER_IP}" {ALLOW}></td>
+</tr>
+<tr>
+  <td>Subnetz maskieren</td>
+  <td><input type="checkbox" name="masq" value="yes" {MASQ} {ALLOW}></td>
+</tr>
+</table>
+</fieldset>
+
+<table align="right">
+<tr>
+  <td><input type="reset" name="Cancel_Button" value="Abbrechen"></td>
+  <td><input type="button" name="OK_Button" value="&Uuml;bernehmen" onclick="checkValues()"></td>
+</tr>
+</table>
+</div>
+
+</form>
+</body>
+</html>

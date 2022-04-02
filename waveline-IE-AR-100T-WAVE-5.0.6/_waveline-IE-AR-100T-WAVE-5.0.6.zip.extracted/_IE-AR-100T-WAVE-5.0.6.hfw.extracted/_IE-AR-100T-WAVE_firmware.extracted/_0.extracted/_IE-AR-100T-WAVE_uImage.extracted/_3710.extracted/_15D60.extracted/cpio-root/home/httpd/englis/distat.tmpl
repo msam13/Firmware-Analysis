@@ -1,0 +1,83 @@
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta name="author" content="Enrico Kalliwoda">
+<meta name="description" content="English toc-page of the IAR / Heyfra GmbH">
+<meta name="date" content="2008-11-21 11:00:00">
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="cache-control" content="no-store">
+<meta http-equiv="expires" content="0">
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<title>Waveline Router</title>
+<link rel="stylesheet" type="text/css" href="css/stile.css" media="screen">
+<script type="text/javascript">
+<!--
+  function checkState() {
+    if(document.diForm.dim.checked == true) {
+      document.diForm.di1lh.disabled=false;
+      document.diForm.di1hl.disabled=false;
+      document.diForm.di2lh.disabled=false;
+      document.diForm.di2hl.disabled=false;
+    } else {
+      document.diForm.di1lh.disabled=true;
+      document.diForm.di1hl.disabled=true;
+      document.diForm.di2lh.disabled=true;
+      document.diForm.di2hl.disabled=true;
+    }
+  }
+
+  function checkValues() {
+    var result=true;
+
+    if(result==true) {
+      document.diForm.submit();
+    }
+  }
+
+//-->
+</script>
+</head>
+<body>
+<form action="config.cgi" method="post" target="Main" name="diForm">
+  <input type="hidden" name="lang" value="englis">
+  <input type="hidden" name="item" value="48">
+  <input type="hidden" name="act" value="1">
+  <fieldset><legend>DI state</legend>
+  <table>
+  <tr>
+    <td>Input 1</td>
+    <td style="background-color:{DI1BGCOL}; color:{DI1COLOR};"><b>{DI1STATE}</b></td>
+  </tr>
+  <tr>
+    <td>Input 2</td>
+    <td style="background-color:{DI2BGCOL}; color:{DI2COLOR};"><b>{DI2STATE}</b></td>
+  </tr>
+  </table>
+  </fieldset>
+  <fieldset><legend>DI-Monitoring</legend>
+  <input type="checkbox" name="dim" value="yes" id="dim" onclick="checkState()"{DIMSTATE}>
+  <label for="dns"> start DI monitoring</label>
+  <table>
+    <tr>
+      <td>DI 1</td>
+      <td><input type="checkbox" name="di1lh" value="yes" {CHECK1LH} {ALLOW}>low-high-edge</td>
+      <td><input type="checkbox" name="di1hl" value="yes" {CHECK1HL} {ALLOW}>high-low-edge</td>
+    </tr>
+    <tr>
+      <td>DI 2</td>
+      <td><input type="checkbox" name="di2lh" value="yes" {CHECK2LH} {ALLOW}>low-high-edge</td>
+      <td><input type="checkbox" name="di2hl" value="yes" {CHECK2HL} {ALLOW}>high-low-edge</td>
+    </tr>
+  </table>
+  </fieldset>
+  <table align="right">
+  <tr>
+    <td> <input type="reset" name="Cancel_Button" value="Cancel"> </td>
+    <td> <input type="button" name="OK_Button" value="Apply" onclick="checkValues()"> </td>
+  </tr>
+  </table>
+</form>
+</body>
+</html>

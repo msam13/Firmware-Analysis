@@ -1,0 +1,99 @@
+IE-AR-100T-WAVE-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	MODULE-IDENTITY,
+	OBJECT-TYPE, 
+	NOTIFICATION-TYPE,
+	enterprises
+		FROM SNMPv2-SMI;
+
+weidmueller MODULE-IDENTITY
+	LAST-UPDATED "200901130000Z"
+	ORGANIZATION "Weidmueller Interface GmbH & Co. KG"
+	CONTACT-INFO
+		"Klingenbergstrasse 16
+		 32758 Detmold, Germany
+		 +49 5231 14 0"
+	DESCRIPTION
+		"The MIB module describes private objects for IE-AR-100T-WAVE routers"
+
+	REVISION "200901130000Z"
+	DESCRIPTION
+		"Initial Revision."
+	::= { enterprises 24029 }
+	
+
+router   OBJECT IDENTIFIER ::= { weidmueller 2 }
+iear     OBJECT IDENTIFIER ::= { router 1 }
+iearDI   OBJECT IDENTIFIER ::= { iear 1 }
+iearTrap OBJECT IDENTIFIER ::= { iear 2 }
+
+--
+-- IE-AR DI Group
+--
+
+iearDITable OBJECT-TYPE
+    SYNTAX SEQUENCE OF IEARDIEntry
+    MAX-ACCESS not-accessible
+    STATUS current
+    DESCRIPTION
+        "A table containing information about IE-AR Digital Input Ports."
+    ::= { iearDI 1 }
+
+iearDIEntry OBJECT-TYPE
+    SYNTAX IEARDIEntry
+    MAX-ACCESS not-accessible
+    STATUS current
+    DESCRIPTION
+        "An entry of the iearDITable."
+    INDEX   { iearDINumber }
+    ::= { iearDITable 1 }
+
+IEARDIEntry ::=
+    SEQUENCE {
+        iearDINumber 	INTEGER,
+        iearDIStatus	INTEGER
+    }
+
+iearDINumber OBJECT-TYPE
+    SYNTAX INTEGER (1..127)
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "A value which indicates an IE-AR Digital Input Port."
+    ::= { iearDIEntry 1 }
+
+iearDIStatus OBJECT-TYPE
+    SYNTAX INTEGER {
+        on(1),
+        off(2)
+    }
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION
+        "This indicates the state of the Digital Input Port.
+        The meanings of the values are:
+        on(1)  - signal on Digital Input Port detected.
+        off(2) - no signal on Digital Input Port detected."
+    ::= { iearDIEntry 2 }
+
+--
+-- IEAR Trap Group
+--
+
+iearTrapDI-ON NOTIFICATION-TYPE
+    OBJECTS   { iearDINumber }
+	STATUS current
+    DESCRIPTION
+        "Indicates that the IE-AR recognizes a signal on a
+         Digital Input Port."
+    ::= { iearTrap 1 }
+
+iearTrapDI-OFF NOTIFICATION-TYPE
+    OBJECTS   { iearDINumber }
+	STATUS current
+    DESCRIPTION
+        "Indicates that the IE-AR loses a signal on a Digital Input Port."
+    ::= { iearTrap 2 }
+
+END

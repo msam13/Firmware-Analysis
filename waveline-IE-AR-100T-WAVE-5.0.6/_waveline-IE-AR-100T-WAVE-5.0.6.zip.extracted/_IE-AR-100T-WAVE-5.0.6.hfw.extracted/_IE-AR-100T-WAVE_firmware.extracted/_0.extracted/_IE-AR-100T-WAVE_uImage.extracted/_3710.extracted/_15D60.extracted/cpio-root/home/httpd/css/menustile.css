@@ -1,0 +1,12 @@
+body         { font-family: Verdana, Arial, Helvetica, sans-serif; background-color:#C0C0C0; border:0px; }
+table        { empty-cells:show; }
+h1           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:20px; color:#EC3D22; }
+h2           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:14px; color:#EC3D22; }
+h3           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:14px; color:#EC3D22; line-height:16px; margin-top:1px; margin-bottom:1px; }
+h4           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:14px; }
+td           { font-family: Verdana, Arial, Helvetica, sans-serif; height:18px; font-size:12px; line-height:14px; margin-top:10px; margin-bottom:1px; }
+th           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:14px; color:#EC3D22; text-align:left; line-height:16px; margin-top:1px; margin-bottom:1px; }
+a            { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; text-decoration:none; color:#000000; font-weight:normal; }
+a:visited    { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; text-decoration:none; color:#000000; font-weight:normal; }
+a:hover      { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; text-decoration:underline; color:#EC3D22; font-weight:normal; }
+.thoben      { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:14px; color:#EC3D22; text-align:left; line-height:16px; margin-top:1px; margin-bottom:1px; border-top-width:1px; border-top-style:solid; }

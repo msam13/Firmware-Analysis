@@ -1,0 +1,20 @@
+#!/bin/sh
+
+source /tmp/ulsp/dyndns.config
+
+# leave if dyndns is not configured
+[ $DYNDNS_PROVIDER = "none"  ] && return
+
+# find app
+updatedd=$(which updatedd)
+
+# prepare for login
+if [ $DYNDNS_PROVIDER = "regfish" ]
+then
+  login="STD=${DYNDNS_USER}:${DYNDNS_PASS}"
+else
+  login="${DYNDNS_USER}:${DYNDNS_PASS}"
+fi
+
+# start updatedd
+env LOGIN=$login $updatedd -Y $DYNDNS_PROVIDER -- -4 $PPP_LOCAL $DYNDNS_HOST

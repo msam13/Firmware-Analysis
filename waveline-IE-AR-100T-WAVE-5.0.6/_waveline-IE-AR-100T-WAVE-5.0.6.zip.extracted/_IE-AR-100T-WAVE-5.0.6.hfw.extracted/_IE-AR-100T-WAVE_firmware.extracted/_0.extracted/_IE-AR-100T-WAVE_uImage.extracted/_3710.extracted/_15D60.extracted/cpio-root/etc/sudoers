@@ -1,0 +1,37 @@
+# sudoers file.
+#
+# This file MUST be edited with the 'visudo' command as root.
+# Failure to use 'visudo' may result in syntax or file permission errors
+# that prevent sudo from running.
+#
+# See the sudoers man page for the details on how to write a sudoers file.
+#
+
+# Host alias specification
+
+# User alias specification
+
+# Cmnd alias specification
+Cmnd_Alias     REBOOT = /sbin/reboot
+Cmnd_Alias     OPENVPN = /usr/sbin/openvpn
+Cmnd_Alias     CERT = /usr/sbin/cert
+Cmnd_Alias     LOAD = /usr/sbin/load
+Cmnd_Alias     SAVE = /usr/sbin/save
+Cmnd_Alias     UPDATE = /usr/sbin/update
+Cmnd_Alias     MOUNT = /bin/mount, /bin/umount
+
+# Defaults specification
+
+# Runas alias specification
+
+# User privilege specification
+
+# Uncomment to allow admin to run all commands necessary, but not login as another user (since it can't start a shell)
+admin   ALL= REBOOT, LOAD, SAVE, UPDATE, MOUNT, /etc/init.d/, /usr/sbin/iptables
+
+# Allow user www-data on ALL (since we don't know the hostname yet) to reboot, load, save and all in /bin
+www-data	ALL= NOPASSWD: REBOOT, LOAD, SAVE, OPENVPN, CERT, /bin/, /etc/init.d/
+
+# Samples
+# %users  ALL=/sbin/mount /cdrom,/sbin/umount /cdrom
+# %users  localhost=/sbin/shutdown -h now

@@ -1,0 +1,140 @@
+#!/bin/sh
+
+source /tmp/ulsp/static.config
+source /tmp/ulsp/modem.config
+source /tmp/ulsp/dialout.config
+
+PPPD_SCRIPT="/etc/ppp/peers/dialout"
+CHAT_SCRIPT="/etc/ppp/chat/dialout"
+
+# Check if we should run
+if [ $DIALOUT_DEV = "none" -o ${DIALOUT_ISP_ACTIVE} -lt 1 ]
+then
+	echo "Skipping dialout according to configuration!"
+	exit 0
+fi
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+DAEMON=/usr/sbin/pppd
+NAME=pppd
+
+DAEMON_OPTS="call dialout"
+
+test -x $DAEMON || exit 0
+
+if [ ${DIALOUT_DEV} = "ttyS1" ]
+then
+	DIALOUT_SPEED="115200"
+else
+	DIALOUT_SPEED="57600"
+fi
+
+configure () {
+
+  if [ ${DIALOUT_DEV} = "ttyS1" ]
+  then
+		stty clocal cread -hupcl -F /dev/ttyS1
+    echo "AT+GCI=${INT_MODEM_COUNTRY_CODE}" > /dev/${DIALOUT_DEV}
+  fi
+
+  if [ ${DIALOUT_DEV} = "ttyS2" ]
+  then
+    echo "AT+GCI=${EXT_MODEM_COUNTRY_CODE}" > /dev/${DIALOUT_DEV}
+  fi
+
+  # writing ppp options file
+  echo -n                        > $PPPD_SCRIPT
+  if [ $DIALOUT_DEV = "eth1" ]
+  then
+    [ $DIALOUT_IDLE_TIME -gt 0 ]                       \
+       && echo "pty '/usr/sbin/pppoe -p /var/run/pppoe.pid -I eth1 -T $DIALOUT_IDLE_TIME -U -m 1412'" >> $PPPD_SCRIPT \
+       || echo "pty '/usr/sbin/pppoe -p /var/run/pppoe.pid -I eth1 -U -m 1412'" >> $PPPD_SCRIPT
+  else
+    echo "/dev/${DIALOUT_DEV}"  >> $PPPD_SCRIPT
+  fi
+
+  [ $DIALOUT_IDLE_TIME -gt 0 ] && echo "demand"                  >> $PPPD_SCRIPT
+  [ $DIALOUT_IDLE_TIME -gt 0 ] && echo "persist"                 >> $PPPD_SCRIPT
+  [ $DIALOUT_IDLE_TIME -gt 0 ] && echo "idle $DIALOUT_IDLE_TIME" >> $PPPD_SCRIPT
+
+  [ $DEFAULT_GW_ITF = "ppp" ]  && echo "defaultroute"            >> $PPPD_SCRIPT
+
+  cat << PPPD_SCRIPT_EOF >> $PPPD_SCRIPT
+default-asyncmap
+${DIALOUT_SPEED}
+noauth
+lock
+crtscts
+modem
+noaccomp
+nodeflate
+nopcomp
+novj
+novjccomp
+noipdefault
+usepeerdns
+ipcp-accept-local
+ipcp-accept-remote
+mtu ${DIALOUT_MTU}
+mru ${DIALOUT_MRU}
+PPPD_SCRIPT_EOF
+
+  echo "maxfail $DIALOUT_RETRIES"     >> $PPPD_SCRIPT
+  echo "holdoff $DIALOUT_RETRY_DELAY" >> $PPPD_SCRIPT
+
+  dialout_user=$(eval echo \$$(echo DIALOUT_ISP_${DIALOUT_ISP_ACTIVE}_USER))
+  echo "name $dialout_user" >> $PPPD_SCRIPT
+
+  if [ $DIALOUT_DEV = "eth1" ]
+  then
+    # calling pppoe instead of chat for ADSL modems
+    echo "connect true" >> $PPPD_SCRIPT
+  else
+    # writing chat-script for analog modems
+    echo "connect '/usr/sbin/chat -v -f $CHAT_SCRIPT'" >> $PPPD_SCRIPT
+
+    dialout_number=$(eval echo \$$(echo DIALOUT_ISP_${DIALOUT_ISP_ACTIVE}_NUM))
+
+    # writing chat options file
+echo -n                         > $CHAT_SCRIPT
+cat << CHAT_SCRIPT_EOF         >> $CHAT_SCRIPT
+ABORT 'VOICE'
+'' \d\d\d+++\c
+'' \d\d\dATQ0V1H0
+ABORT 'BUSY'
+ABORT 'NO CARRIER'
+ABORT 'NO DIALTONE'
+ABORT 'NO ANSWER'
+OK ATZ
+OK AT$DIALOUT_MODEM_CMD
+OK ATDT$dialout_number
+CONNECT \d\c
+CHAT_SCRIPT_EOF
+  fi
+
+}
+set -e
+
+case "$1" in
+    start)
+        logger "Starting $NAME"
+        configure
+        start-stop-daemon --start --quiet --oknodo --exec $DAEMON -- $DAEMON_OPTS
+        ;;
+    stop)
+        logger "Stopping $NAME"
+        start-stop-daemon --quiet --stop --oknodo --name $NAME
+        ;;
+    reload|restart|force-reload)
+        $0 stop
+        sleep 1
+        $0 start
+        ;;
+    *)
+        echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
+        exit 1
+        ;;
+esac
+
+exit $?
+

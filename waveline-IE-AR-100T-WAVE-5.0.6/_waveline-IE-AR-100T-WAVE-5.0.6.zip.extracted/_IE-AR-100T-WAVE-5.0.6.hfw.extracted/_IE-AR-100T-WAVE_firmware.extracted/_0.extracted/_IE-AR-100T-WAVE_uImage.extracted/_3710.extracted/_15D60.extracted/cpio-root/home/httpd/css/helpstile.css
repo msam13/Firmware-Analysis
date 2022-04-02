@@ -1,0 +1,16 @@
+body         { font-family: Verdana, Arial, Helvetica, sans-serif; background-color:#C0C0C0; } 
+h1           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:20px; }
+h2           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:14px; }
+h3           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:14px; color:#000099; line-height:16px; margin-top:1px; margin-bottom:1px; }
+h4           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; line-height:16px; margin-bottom:1px; }
+p            { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; text-align:justify; line-height:15px; margin-top:2px; margin-bottom:1px; }
+ul           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; text-align:justify; line-height:15px; margin-top:2px; margin-bottom:1px; }
+table        { border-style:none; padding:0px; margin:0px; empty-cells:show; border-collapse:collapse; caption-side:top; }
+caption      { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; line-height:16px; margin-bottom:1px; text-align:left; }
+th           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; text-align:left; font-weight:bold; 
+               border-style:solid; border-width:1px; margin:0px; padding:3px; }
+td           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; line-height:14px; border-style:solid; border-width:1px; margin:0px; padding:5px; }
+a            { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; text-decoration:none; color:#000000; font-weight:normal; }
+a:visited    { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; text-decoration:none; color:#000000; font-weight:normal; }
+a:hover      { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; text-decoration:underline; color:#EC3D22; font-weight:normal; }
+.wichtig     { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; }

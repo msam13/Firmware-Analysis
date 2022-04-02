@@ -1,0 +1,243 @@
+#!/bin/sh
+
+source /tmp/ulsp/static.config
+source /tmp/ulsp/modem.config
+source /tmp/ulsp/dialout.config
+source /tmp/ulsp/dialin.config
+
+# mgetty setup ...
+
+DIALIN_CONFIG="/etc/mgetty/login.config"
+MGETTY_CONFIG="/etc/mgetty/mgetty.config"
+DIALIN_ACCESS="/etc/mgetty/dialin.config"
+CHAT_SCRIPT="/etc/ppp/chat/dialout"
+AUTH_CONFIG="/etc/ppp/peers/auth"
+HANGUP_SCRIPT="/etc/ppp/hangup"
+
+AUTH_UP="/etc/ppp/auth-up"
+CALLBACK="/etc/ppp/callback"
+TARGET_IP="193.99.144.80"       # heise.de
+
+if [ ${DIALIN_DEV} = "ttyS1" ]
+then
+	DIALIN_SPEED="115200"
+else
+	DIALIN_SPEED="57600"
+fi
+
+# Check if we should run
+if [ ${DIALIN_DEV} = "none" ]
+then
+	echo "Skipping dialin according to configuration!"
+	exit 0
+fi
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+DAEMON=/usr/sbin/mgetty
+NAME=mgetty
+SERVICE=/usr/sbin/service
+SERVNAME=service
+DIALIN_DEBUG=1
+
+if [ ${DIALIN_DEBUG} = "1" ]
+then
+	DAEMON_OPTS="30 $DAEMON -x 7 -s $DIALIN_SPEED -D $DIALIN_DEV"
+else
+	DAEMON_OPTS="30 $DAEMON -s $DIALIN_SPEED -D $DIALIN_DEV"
+fi
+
+PPPD="/usr/sbin/pppd"
+PPPD_START_AUTH="$PPPD call auth"
+
+test -x $DAEMON || exit 0
+
+configure () {
+
+mkdir -p /etc/mgetty
+
+# create the config file
+#
+echo -n > ${MGETTY_CONFIG}
+cat << MGETTY_CONFIG_EOF >> ${MGETTY_CONFIG}
+# global defaults
+# per port stuff
+port /dev/${DIALIN_DEV}
+modem-type data
+debug 0
+speed ${DIALIN_SPEED}
+init-chat '' \d${DIALIN_INIT_AT}
+login-conf-file ${DIALIN_CONFIG}
+MGETTY_CONFIG_EOF
+
+# passwd
+#
+sed /${DIALIN_USER}/d < /etc/passwd > /etc/passwd2
+mv /etc/passwd2 /etc/passwd
+
+# shadow
+#
+PASS=`/usr/bin/cryptpw ${DIALIN_PASS}`
+
+sed /${DIALIN_USER}/d < /etc/shadow > /etc/shadow2
+mv /etc/shadow2 /etc/shadow
+echo "${DIALIN_USER}:${PASS}:1:0:99999::::" >> /etc/shadow
+
+# start ppp after login
+#
+if [ ${DIALIN_MODE} = "callback" ]
+then
+	echo "${DIALIN_USER}:x:1001:500:callback account:/:/bin/false" >> /etc/passwd
+	echo -n > ${DIALIN_CONFIG}
+  echo "* - - $PPPD_START_AUTH" > ${DIALIN_CONFIG}
+  echo "" >> ${DIALIN_CONFIG}
+else
+	echo -n > ${DIALIN_CONFIG}
+	echo "/AutoPPP/ - a_ppp ${PPPD} /dev/${DIALIN_DEV} -chap +pap login ${DIALIN_LOCAL_IP}:${DIALIN_PEER_IP}" >> ${DIALIN_CONFIG}
+	echo "${DIALIN_USER}:x:1000:1000:mgetty account:/:/bin/sh" >> /etc/passwd
+fi
+
+
+# make auth settings
+echo -n                >  ${AUTH_CONFIG}
+cat << AUTH_CONFIG_EOF >> ${AUTH_CONFIG}
+/dev/${DIALIN_DEV}
+default-asyncmap
+auth
+modem
+crtscts
+nodefaultroute
+disconnect '/usr/sbin/chat -v -f ${HANGUP_SCRIPT}'
+mtu ${DIALOUT_MTU}
+mru ${DIALOUT_MRU}
+name ${DIALIN_USER}
+user ${DIALIN_USER}
+idle 60
+AUTH_CONFIG_EOF
+
+
+# make callback settings
+# at first a auth-up script
+# auth-up stops the "auth" pppd
+# and start dialout
+
+echo -n > ${AUTH_UP}
+cat << AUTH_UP_EOF >> ${AUTH_UP}
+#!/bin/sh
+logger "auth successfully"
+KILL=\$(which kill)
+SIG=TERM
+
+/bin/sh /etc/ppp/callback
+
+# kill the pppd
+# get the pid for pppd call auth
+#PID=\$(ps w | grep "[ /]pppd call auth" | grep -v grep | sed 's/^[ ]*//' | cut -d" " -f 1)
+#if [ -n "\$PID" ];
+#then
+#  \$KILL \$PID || logger "\$0: \$KILL pppd auth failed. Nothing stopped."
+#fi
+
+# start dialout
+
+
+AUTH_UP_EOF
+
+echo -n > ${CALLBACK}
+cat << CALLBACK_EOF >> ${CALLBACK}
+#!/bin/sh
+logger "callback script started"
+sleep 5
+PID=\$(ps w | grep "[ /]pppd call dialout" | grep -v grep | sed 's/^[ ]*//' | cut -d" " -f 1)
+if [ -n "\$PID" ];
+then
+  logger "callback: dialout is already active"
+else {
+	logger "callback: start new dialout process"
+	 ${PPPD} call dialout &
+	}
+fi
+sleep 5
+logger "callback trigger dialout"
+/bin/ping -c 5 193.99.144.80
+
+CALLBACK_EOF
+
+chmod +x ${CALLBACK}
+chmod +x ${AUTH_UP}
+
+# make hangup settings
+echo -n > ${HANGUP_SCRIPT}
+cat << HANGUP_SCRIPT_EOF >> ${HANGUP_SCRIPT}
+ABORT \'VOICE\'
+'' \d\d\d+++\d
+\d OK ATH\n
+HANGUP_SCRIPT_EOF
+
+}
+
+
+
+firewall_on() {
+	if [ $DIALIN_MASQ = "yes" ]
+	then
+    # add dialin ips to forward chain
+    # we need to create our own chain, to be able to delete in on shutdown, even if
+    # configuration changed meanwhile
+    dialin_network=$(ipcalc -n $DIALIN_LOCAL_IP | cut -d"=" -f2)
+    iptables -N dialin_fwd
+    iptables -A dialin_fwd -s $dialin_network/24 -j ACCEPT
+    # we must insert at least before blacklist here
+    position=$(expr $(iptables -L FORWARD | wc -l) - 2)
+    iptables -I FORWARD $position -j dialin_fwd
+
+    # always masq L2TP network
+    iptables -t nat -N dialin_masq
+    iptables -t nat -A dialin_masq -s $dialin_network/24 -j MASQUERADE
+    # just append it here
+    iptables -t nat -A POSTROUTING -j dialin_masq
+	fi
+}
+
+firewall_off() {
+	if [ $DIALIN_MASQ = "yes" ]
+	then
+		# remove dialin ips from forward chain (as you see, we don't need the ip here
+    iptables -D FORWARD -j dialin_fwd    # remove rule
+    iptables -F dialin_fwd               # flush chain
+    iptables -X dialin_fwd               # remove chain
+
+    iptables -t nat -D POSTROUTING -j dialin_masq
+    iptables -t nat -F dialin_masq
+    iptables -t nat -X dialin_masq
+	fi
+}
+
+
+
+set -e
+
+case "$1" in
+    start)
+        logger "Starting $NAME"
+        configure
+				firewall_on
+				start-stop-daemon --start --quiet --oknodo --background --exec $SERVICE -- $DAEMON_OPTS
+				;;
+    stop)
+        logger "Stopping $NAME"
+				firewall_off
+				start-stop-daemon --quiet --stop --oknodo --name $SERVNAME
+				start-stop-daemon --quiet --stop --oknodo --name $NAME
+				;;
+    reload|restart|force-reload)
+        $0 stop
+        sleep 1
+        $0 start
+        ;;
+    *)
+        echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
+        exit 1
+        ;;
+esac
+
+exit $?

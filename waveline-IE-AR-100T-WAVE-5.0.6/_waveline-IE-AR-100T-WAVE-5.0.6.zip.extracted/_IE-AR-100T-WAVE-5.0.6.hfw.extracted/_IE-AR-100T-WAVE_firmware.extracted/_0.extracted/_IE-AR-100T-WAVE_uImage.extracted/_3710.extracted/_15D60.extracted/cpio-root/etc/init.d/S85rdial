@@ -1,0 +1,101 @@
+#! /bin/sh
+#
+# System-V init script for the openntp daemon
+#
+
+source /tmp/ulsp/redundant.config
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+DESC="redundant dialout daemon"
+
+SER2NET=ser2net
+SER2NET_DAEMON=/usr/sbin/$SER2NET
+SER2NET_PIDFILE=/var/run/${SER2NET}.pid
+SER2NET_OPTS="-P ${SER2NET_PIDFILE}"
+
+DIALOUTD=dialoutd
+DIALOUTD_DAEMON=/usr/sbin/$DIALOUTD
+DIALOUTD_PIDFILE=/var/run/${DIALOUTD}.pid
+
+REDIALD=rediald
+REDIALD_DAEMON=/usr/sbin/$REDIALD
+REDIALD_PIDFILE=/var/run/${REDIALD}.pid
+
+# Read allowed IP's here
+
+firewallUp() {
+  if [ $RDIAL_OPT = "yes" ]
+  then
+    iptables -N dial_client
+
+    ixp=0
+    while [ $ixp -lt $RDIAL_LIST_N ]
+    do
+      ixp=$(expr $ixp + 1)
+      dialout_client=$(eval echo '$'$(echo RDIAL_CLIENT_${ixp}_IP))
+
+      echo "Adding ip $dialout_client to firewall"
+      iptables -A dial_client -p tcp -s $dialout_client --dport $RDIAL_PORT -j ACCEPT
+    done
+
+    iptables -A INPUT -j dial_client
+  fi
+
+  if [ $REDUNT_TYP = "target" ]
+  then
+    iptables -A INPUT -p tcp --dport $REDUNT_EX_PORT -j ACCEPT
+  fi
+}
+
+firewallDown() {
+  # remove dial_client chain
+  iptables -D INPUT -j dial_client
+  iptables -F dial_client
+  iptables -X dial_client
+
+  iptables -D INPUT -p tcp --dport $REDUNT_EX_PORT -j ACCEPT
+}
+
+#configure () {
+    #if [ $REDUNT_PARA != "none" ]
+    #then
+    #  # wait for connections on port 18180 and connect to /dev/ttyS2 if it occurs
+    #  echo "18180:raw:0:/dev/ttyS2:57600"   > /etc/ser2net.conf
+    #fi
+#}
+
+case "$1" in
+  start)
+	echo -n "Starting $DESC: $NAME"
+	#configure
+    firewallUp
+    if [ $RDIAL_OPT = "yes" ]
+    then
+      # start ser2net here
+	  start-stop-daemon -S -q -p $DIALOUTD_PIDFILE -x $DIALOUTD_DAEMON
+    fi
+    if [ $REDUNT_TYP != "none" ]
+    then
+      start-stop-daemon -S -q -p $REDIALD_PIDFILE -x $REDIALD_DAEMON
+    fi
+	echo "."
+	;;
+  stop) 
+	echo -n "Stopping $DESC: $NAME"
+    firewallDown
+	start-stop-daemon -K -q -p $DIALOUTD_PIDFILE
+	start-stop-daemon -K -q -p $REDIALD_PIDFILE
+	echo "."
+	;;
+  restart|reload|force-reload) 
+	$0 stop
+	sleep 1
+	$0 start
+	;;
+  *) 
+	echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
+	exit 1
+	;;
+esac
+
+exit 0

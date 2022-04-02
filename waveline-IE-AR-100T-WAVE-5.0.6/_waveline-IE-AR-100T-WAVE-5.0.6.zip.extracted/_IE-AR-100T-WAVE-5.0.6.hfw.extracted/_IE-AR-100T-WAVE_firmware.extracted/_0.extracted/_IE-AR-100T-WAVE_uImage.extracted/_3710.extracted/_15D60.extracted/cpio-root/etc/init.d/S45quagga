@@ -1,0 +1,251 @@
+#!/bin/sh
+#
+### BEGIN INIT INFO
+# Provides: quagga
+# Required-Start: $local_fs $network $remote_fs $syslog
+# Required-Stop: $local_fs $network $remote_fs $syslog
+# Default-Start:  2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: start and stop the quagga routing suite
+# Description: quagga is a routing suite for IP routing protocols like 
+#              BGP, OSPF, RIP and others. This script contols the main 
+#              daemon "quagga" as well as the individual protocol daemons.
+### END INIT INFO
+#
+source /tmp/ulsp/ospf.config
+source /tmp/ulsp/network.config
+
+# determine ospf hostname
+if [ -n "$OSPF_HOSTNAME" ]
+then
+    HOSTNAME=$OSPF_HOSTNAME
+else
+    logger "S44quagga: No hostname defined. Using $HOSTNAME!"
+    config_file=$(ls -l /tmp/ulsp/ospf.config | cut -d '>' -f 2 | tr -d ' ') 
+    /bin/sed -i -e "s/OSPF_HOSTNAME=.*/OSPF_HOSTNAME=\'$HOSTNAME\'/" /tmp/ulsp/$config_file
+    chown admin:admin /tmp/ulsp/$config_file
+fi
+
+if [ $OPT_OSPF = "no" ]
+then
+	echo "Skipping ospfd according to configuration!"
+	exit 0
+fi
+
+export PATH=/sbin:/usr/sbin:/bin:/usr/bin
+
+test -x /usr/sbin/zebra || exit 0
+test -x /usr/sbin/ospfd || exit 0
+
+ZEBRA_DOPTS='--daemon --config_file /etc/quagga/zebra.conf'
+OSPF_DOPTS='--daemon --config_file /etc/quagga/ospfd.conf'
+
+# Cd to / before starting any daemons.
+cd /
+
+
+configureZebraInterface()
+{
+	intf=$1
+
+	intfEnabled=$(eval echo \$$(echo OSPF_ACTIVATE_ETH${intf}))
+	intfIP=$(ip addr show eth$intf | grep inet | grep global | cut -d" " -f6)
+    # this could be more than one address, so get only the first one
+    set -- $intfIP
+
+	if [ "$intfEnabled" = "yes" ]
+	then
+		echo "interface eth$intf" >> /etc/quagga/zebra.conf
+		echo "  description wired interface" >> /etc/quagga/zebra.conf
+		echo "  ip address $1" >> /etc/quagga/zebra.conf
+		echo "  multicast" >> /etc/quagga/zebra.conf
+	fi
+}
+
+configureZebra()
+{
+	echo -n > /etc/quagga/zebra.conf
+
+	echo "hostname $HOSTNAME" >> /etc/quagga/zebra.conf
+
+	if [ -n "$OSPF_TELNET_PASSWORD" ]
+	then
+		echo "password $OSPF_TELNET_PASSWORD" >> /etc/quagga/zebra.conf
+		echo "enable password $OSPF_TELNET_PASSWORD" >> /etc/quagga/zebra.conf
+	fi
+	echo >> /etc/quagga/zebra.conf
+	
+	configureZebraInterface 0
+	echo >> /etc/quagga/zebra.conf
+	
+	configureZebraInterface 1
+	echo >> /etc/quagga/zebra.conf
+}
+
+configureOSPFInterface()
+{
+	intf=$1
+
+	intfEnabled=$(eval echo \$$(echo OSPF_ACTIVATE_ETH${intf}))
+	intfHello=$(eval echo \$$(echo OSPF_HELLO_ETH${intf}))
+	intfDead=$(eval echo \$$(echo OSPF_DEAD_ETH${intf}))
+	intfNet=$(eval echo \$$(echo OSPF_NET_ETH${intf}))
+	intfPrio=$OSPF_PRIO_AREA1
+	
+	if [ "$intfEnabled" = "yes" ]
+	then
+		echo "interface eth$intf" >> /etc/quagga/ospfd.conf
+		echo "  ip ospf authentication-key $OSPF_AUTH_KEY" >> /etc/quagga/ospfd.conf
+		echo "  ip ospf hello-interval $intfHello" >> /etc/quagga/ospfd.conf
+		echo "  ip ospf dead-interval $intfDead" >> /etc/quagga/ospfd.conf
+		echo "  ip ospf network $intfNet" >> /etc/quagga/ospfd.conf
+		if [ $intfNet = "broadcast" ]
+		then
+			echo "  ip ospf priority $intfPrio" >> /etc/quagga/ospfd.conf
+		fi
+	fi
+}
+
+configureOSPF()
+{
+	echo -n > /etc/quagga/ospfd.conf
+	
+	echo "hostname $HOSTNAME" >> /etc/quagga/ospfd.conf
+	
+	if [ $OSPF_TELNET_PASSWORD ]
+	then
+		echo "password $OSPF_TELNET_PASSWORD" >> /etc/quagga/ospfd.conf
+		echo "enable password $OSPF_TELNET_PASSWORD" >> /etc/quagga/ospfd.conf
+	fi
+	echo >> /etc/quagga/ospfd.conf
+
+	configureOSPFInterface 0
+	echo >> /etc/quagga/ospfd.conf
+
+	configureOSPFInterface 1
+	echo >> /etc/quagga/ospfd.conf
+	
+	echo "router ospf" >> /etc/quagga/ospfd.conf
+	echo "  network 0.0.0.0/0 area 0" >> /etc/quagga/ospfd.conf
+
+    ip_addr=$(ip addr show eth0 | grep inet | grep global | cut -d" " -f6)
+    # this could be more than one address, so get only the first one
+    set -- $ip_addr
+    ip=$(echo $1 | cut -d"/" -f1)
+    echo "  ospf router-id $ip" >> /etc/quagga/ospfd.conf
+	
+	if [ $OSPF_PROPAGATE_STATIC = "yes" ]
+	then
+		echo "  redistribute static" >> /etc/quagga/ospfd.conf
+		echo "  redistribute kernel" >> /etc/quagga/ospfd.conf
+	fi
+
+	echo "  area 0 authentication" >> /etc/quagga/ospfd.conf
+	
+	if [ $OSPF_RFC1583 = "yes" ]
+	then
+		echo "  compatible rfc1583" >> /etc/quagga/ospfd.conf
+	fi
+    
+    echo >> /etc/quagga/ospfd.conf
+    # register MIB2::OSPF
+    echo "smux peer .1.3.6.1.4.1.3317.1.2.5" >> /etc/quagga/ospfd.conf
+}
+
+firewallUp() {
+  iptables -N quagga
+  iptables -A INPUT -j quagga
+
+  # enable OSPF protocol in firewall
+  ip=$(ip addr show eth0 | grep inet | grep global | cut -d" " -f6)
+  set -- $ip
+  pfx=$(ipcalc -p $1 | cut -d"=" -f2)
+  net=$(ipcalc -n $1 | cut -d"=" -f2)
+  iptables -A quagga -p ospf -s ${net}/${pfx} -j ACCEPT
+
+  ip=$(ip addr show eth1 | grep inet | grep global | cut -d" " -f6)
+  set -- $ip
+  pfx=$(ipcalc -p $1 | cut -d"=" -f2)
+  net=$(ipcalc -n $1 | cut -d"=" -f2)
+  iptables -A quagga -p ospf -s ${net}/${pfx} -j ACCEPT
+
+  [ $OSPF_TELNET_PASSWORD ] && iptables -A quagga -p tcp --dport 2601 -j ACCEPT
+  [ $OSPF_TELNET_PASSWORD ] && iptables -A quagga -p tcp --dport 2604 -j ACCEPT
+}
+
+firewallDown() {
+  iptables -D INPUT -j quagga
+
+  iptables -F quagga
+  iptables -X quagga
+}
+
+configure()
+{
+	echo "quagga:x:105:105:Quagga:/var/run/quagga:/bin/bash" >> /etc/passwd
+	echo "quagga:x:105:quagga" >> /etc/group
+
+	mkdir -p /etc/quagga
+	mkdir -p /var/run/quagga
+	chown quagga:quagga /var/run/quagga
+	chmod 755 /var/run/quagga
+	
+	configureZebra
+	configureOSPF
+}
+
+startDaemon()
+{
+	daemon=$1
+	shift 1
+	daemonOpts=$*
+
+	echo -n "Starting $daemon service:"
+	start-stop-daemon --quiet \
+			  --start \
+			  --pidfile /var/run/quagga/$daemon.pid \
+			  --exec /usr/sbin/$daemon -- $daemonOpts
+	echo -n " $daemon"
+	echo "."
+}
+
+stopDaemon()
+{
+	daemon=$1
+
+	echo -n "Stopping service:"
+	start-stop-daemon --quiet \
+			  --stop \
+			  --oknodo \
+			  --exec /usr/sbin/$1
+	echo -n " $1"
+	echo "."
+}
+
+case "$1" in
+    start)
+		configure
+		startDaemon zebra $ZEBRA_DOPTS
+		startDaemon ospfd $OSPF_DOPTS
+        firewallUp
+    	;;
+	stop)
+        firewallDown
+    	stopDaemon ospfd
+		stopDaemon zebra
+		echo "Delete quagga group/user."
+		sed -i -e "/quagga/d" /etc/passwd /etc/group
+   		;;
+    restart|reload|force-reload)
+		echo -n "Restarting quagga services:"
+		$0 stop
+		sleep 1
+		$0 start
+		;;
+    *)
+    	echo "Usage: $0 {start|stop|restart|reload|force-reload}"
+		exit 1
+	;;
+esac
+
+exit 0

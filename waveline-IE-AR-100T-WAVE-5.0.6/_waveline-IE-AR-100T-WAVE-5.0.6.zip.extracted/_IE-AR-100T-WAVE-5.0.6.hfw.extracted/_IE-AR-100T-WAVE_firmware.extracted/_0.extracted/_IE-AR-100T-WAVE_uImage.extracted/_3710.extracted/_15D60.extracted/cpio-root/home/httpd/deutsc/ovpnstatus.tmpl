@@ -1,0 +1,40 @@
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta name="author" content="Henry Jesuiter, Enrico Kalliwoda">
+<meta name="description" content="English toc-page of the IAR / Heyfra GmbH">
+<meta name="date" content="2005-06-10 11:00:00">
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="cache-control" content="no-store">
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<title>OpenVPN Status</title>
+<link rel="stylesheet" type="text/css" href="css/stile.css" media="screen">
+<style type="text/css">
+<!--
+div  { font-size:12px; position:absolute; top:40px; left:0px; height:auto; width:100%; visibility:hidden; }
+-->
+</style>
+<script type="text/JavaScript">
+  function timedRefresh(timeoutPeriod) {
+	setTimeout("location.reload(true);",timeoutPeriod);
+  }
+</script>
+</head>
+<body onload="JavaScript:timedRefresh(5000);">
+<script src="deutsc/auxfunc.js" type="text/javascript"></script>
+<fieldset><legend>OpenVPN Dienst-Status</legend>
+<table>
+<tr><td>Modus:</td><td>{MODE}</td></tr>
+<tr><td>Dienst-Status: </td><td>{STATUS}</td></tr>
+</table>
+</fieldset>
+<fieldset><legend>Verbindungen</legend>
+<table border=1>
+{HEAD}
+{CONNECTIONS}
+</table>
+</fieldset>
+</body>
+</html>

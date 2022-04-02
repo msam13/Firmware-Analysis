@@ -1,0 +1,28 @@
+# interface the DHCP server should listen on
+# values: 'none', 'eth0', 'eth1'
+DHCPD_INTERFACE='none'
+
+# DHCP lease time for renew in seconds
+# value: between 3600 and 2^31
+DHCPD_LEASE_TIME='86400'
+
+# DHCP ip range
+# value: any valid ip address, must be within one subnet
+DHCPD_LEASE_START='192.168.1.20'
+DHCPD_LEASE_END='192.168.1.50'
+
+# subnet of the DHCP ip range
+# value: any legal subnet address
+DHCPD_SUBNET='255.255.255.0'
+
+# optional gateway for DHCP
+# value: any valid ip address
+DHCPD_GATEWAY='192.168.1.100'
+
+# optional name server for DHCP
+# value: any valid ip address
+DHCPD_DNS='192.168.1.100'
+
+# optional DHCP domain
+# value: string, between 4 and 127 characters
+DHCPD_DOMAIN=''

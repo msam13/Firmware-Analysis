@@ -1,0 +1,62 @@
+#!/bin/sh
+
+# Start all init scripts in /etc/init.d
+# executing them in numerical order.
+#
+
+# but first find out the device we are running on
+
+# if can't recognize a modem (or an unknown id) we behave just like an ethernet router
+echo "IE-AR-100T-WAVE" > /etc/deviceID
+# find out our internal modem id
+modem_id=$(/usr/sbin/chat -t 3 -V 2>&1  '' ATZ 'OK' < /dev/ttyS1 > /dev/ttyS1)
+modem_id=$(/usr/sbin/chat -t 3 -V 2>&1  '' ATI 'OK' < /dev/ttyS1 > /dev/ttyS1)
+# analog modem found
+[ "$(echo $modem_id | grep 'V.92')" ] && echo "IE-AR-100T-AN-WAVE" > /etc/deviceID
+
+echo -e "\t  \\033[0;33m $(cat /etc/deviceID)\\033[0;39m "
+
+stty ispeed 115200 ospeed 115200 -F /dev/ttyS1
+stty ispeed 57600 ospeed 57600 -F /dev/ttyS2
+
+# resize console screen
+/usr/bin/resize > /dev/null
+
+# Start monitoring of DIs
+/sbin/modprobe wm_di
+
+# load factory defaults
+/usr/sbin/load defaults
+
+# Now try to overwrite default config with user config
+/usr/sbin/load config
+
+# make admin owns its own files
+chown -Rh admin:admin /home/admin
+
+source /tmp/ulsp/system.config
+
+# add current system password to shadow
+sed -i "s:^admin\:.*\:10933:admin\:${SYSTEM_USER_PASS}\:10933:" /etc/shadow
+
+# run through application start scripts
+for i in /etc/init.d/S??* ;do
+
+     # Ignore dangling symlinks (if any).
+     [ ! -f "$i" ] && continue
+
+     case "$i" in
+	*.sh)
+	    # Source shell script for speed.
+	    (
+		trap - INT QUIT TSTP
+		set start
+		. $i
+	    )
+	    ;;
+	*)
+	    # No sh extension, so fork subprocess.
+	    $i start
+	    ;;
+    esac
+done

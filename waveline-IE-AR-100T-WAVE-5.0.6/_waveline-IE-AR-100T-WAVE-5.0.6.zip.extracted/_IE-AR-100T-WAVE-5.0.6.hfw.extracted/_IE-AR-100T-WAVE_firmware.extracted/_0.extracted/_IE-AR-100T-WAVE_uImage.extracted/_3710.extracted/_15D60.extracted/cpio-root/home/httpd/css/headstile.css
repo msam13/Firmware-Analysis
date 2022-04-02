@@ -1,0 +1,13 @@
+body         { font-family: Verdana, Arial, Helvetica, sans-serif; background-color:#EC3C21; margin:0px; padding:0px; border-style:none; border-width:0px; }
+h1           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:20px; margin:1px; line-height:22px; }
+h2           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:14px; color:#000099; }
+h4           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; }
+p            { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; line-height:14px; margin:1px; }
+table        { width:100%; }
+th           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; }
+td           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; }
+a            { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; text-decoration:none; color:#000000; font-weight:normal; }
+a:visited    { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; text-decoration:none; color:#000000; font-weight:normal; }
+a:hover      { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; text-decoration:underline; color:#3333FF; font-weight:normal; }
+image        { border-style:none; border-width:0px; }
+.logocell    { width:303; vertical-align:top; text-align:right; border-style:none; border-width:0px; padding:0px; margin:0px; }

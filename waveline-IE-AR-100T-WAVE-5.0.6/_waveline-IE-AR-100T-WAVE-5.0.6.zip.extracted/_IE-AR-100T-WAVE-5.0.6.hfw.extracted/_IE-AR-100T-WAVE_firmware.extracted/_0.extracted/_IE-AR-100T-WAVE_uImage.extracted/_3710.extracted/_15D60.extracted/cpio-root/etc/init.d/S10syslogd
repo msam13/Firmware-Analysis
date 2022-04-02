@@ -1,0 +1,93 @@
+#!/bin/sh
+#
+### BEGIN INIT INFO
+# Provides: syslogd
+# Short-Description: start and stop the syslog daemon
+# Description: The syslog daemon logs daemon messages depending
+#              on their source and priority to configured targets.
+#              
+### END INIT INFO
+#
+source /tmp/ulsp/log.config
+
+# determine mark interval
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+SYSLOGD=/sbin/syslogd
+KLOGD=/sbin/klogd
+SYSLOGD_PIDFILE=/var/run/syslogd.pid
+KLOGD_PIDFILE=/var/run/klogd.pid
+
+test -x $SYSLOGD || exit 0
+test -x $KLOGD   || exit 0
+
+SYSLOGD_OPTS="-C32 -D -L"
+KLOGD_OPTS="-c 4"
+
+# Cd to / before starting any daemons.
+cd /
+
+# define loglevels
+Emerg=1
+Alert=2
+Critical=3
+Error=4
+Warning=5
+Notice=5
+Info=7
+Debug=8
+
+configure()
+{
+    logLevelText="Error"
+	if [ -z $SYSLOGD_LOG_LEVEL ]
+	then
+        echo "syslog: No log level defined: using $logLevelText."
+    else
+        logLevelText=$SYSLOGD_LOG_LEVEL
+    fi
+
+    logLevel=$(eval echo \$$logLevelText)
+    SYSLOGD_OPTS=$SYSLOGD_OPTS" -l$logLevel"
+    
+    if [ "$SYSLOGD_REMOTE_LOG" = "yes" ]
+    then
+        SYSLOGD_OPTS=${SYSLOGD_OPTS}" -R ${SYSLOGD_REMOTE_HOST}:${SYSLOGD_REMOTE_PORT}"
+    fi
+}
+
+case "$1" in
+    start)
+		configure
+		echo -n "Starting syslog service:"
+        start-stop-daemon -q -S -o -p $SYSLOGD_PIDFILE -x $SYSLOGD -- $SYSLOGD_OPTS
+		echo -n " syslogd"
+    	echo "."
+		echo -n "Starting klog service:"
+        start-stop-daemon -q -S -o -p $KLOGD_PIDFILE -x $KLOGD -- $KLOGD_OPTS
+		echo -n " klogd"
+    	echo "."
+    	;;
+	stop)
+    	echo -n "Stopping syslog service:"
+    	start-stop-daemon -q -K -o -p $SYSLOGD_PIDFILE -x $SYSLOGD
+    	echo -n " syslogd"
+    	echo "."
+    	echo -n "Stopping klog service:"
+    	start-stop-daemon -q -K -o -p $KLOGD_PIDFILE -x $KLOGD
+    	echo -n " klogd"
+    	echo "."
+   		;;
+    restart|reload|force-reload)
+		echo "Restarting syslog/klog service:"
+		$0 stop
+		sleep 1
+		$0 start
+		;;
+    *)
+    	echo "Usage: $0 {start|stop|restart|reload|force-reload}"
+		exit 1
+	;;
+esac
+
+exit 0

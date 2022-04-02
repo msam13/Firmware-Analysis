@@ -1,0 +1,22 @@
+#!/bin/sh
+# ipup actions for dialout
+#
+source /tmp/ulsp/static.config
+source /tmp/ulsp/modem.config
+source /tmp/ulsp/dialout.config
+
+if [ ${DIALOUT_DEV} = "none" ]
+then
+  exit 0
+fi
+
+# setup masquerading
+eth0_ip=$(ip addr show eth0 | grep inet | grep global | cut -d" " -f6)
+eth0_prefix=$(ipcalc -p $eth0_ip | cut -d"=" -f2)
+eth0_network=$(ipcalc -n $eth0_ip | cut -d"=" -f2)
+iptables -t nat -A POSTROUTING -s $eth0_network/$eth0_prefix -d 0/0 -o $1 -j MASQUERADE
+
+eth1_ip=$(ip addr show eth1 | grep inet | grep global | cut -d" " -f6)
+eth1_prefix=$(ipcalc -p $eth1_ip | cut -d"=" -f2)
+eth1_network=$(ipcalc -n $eth1_ip | cut -d"=" -f2)
+iptables -t nat -A POSTROUTING -s $eth1_network/$eth1_prefix -d 0/0 -o $1 -j MASQUERADE

@@ -1,0 +1,104 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta name="author" content="Henry Jesuiter, Enrico Kalliwoda">
+<meta name="description" content="English toc-page of the IAR / Heyfra GmbH">
+<meta name="date" content="2005-06-10 11:00:00">
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="cache-control" content="no-store">
+<meta http-equiv="expires" content="0">
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<title>Log service configuration</title>
+<link rel="stylesheet" type="text/css" href="css/stile.css" media="screen">
+<script src="englis/auxfunc.js" type="text/javascript"></script>
+<script type="text/javascript">
+<!--
+function checkState()
+{
+    if(document.debugForm.remoteLog.checked == true) {
+        document.debugForm.syslog_remote_ip.disabled = false;
+        document.debugForm.syslog_remote_port.disabled = false;
+    }
+    else {
+        document.debugForm.syslog_remote_ip.disabled = true;
+        document.debugForm.syslog_remote_port.disabled = true;
+    }
+}
+
+function checkValues()
+{
+    if(document.debugForm.remoteLog.checked == true) {
+        var ip = document.debugForm.syslog_remote_ip.value;
+        var port = document.debugForm.syslog_remote_port.value;
+
+        if(ip.length == 0 || !isValidIP(ip)) {
+            alert("Please insert a target address!");
+            return;
+        }
+        if(port.length > 0) {
+            if(isNaN(port) || port < 1 || port > 65535) {
+                alert("Please insert a valid destination port!");
+                return;
+            }
+        }
+    }
+    document.debugForm.submit();
+}
+//-->
+</script>
+    </head>
+    <body>
+        <form action="config.cgi" method="post" target="Main" name="debugForm">
+            <input type="hidden" name="lang" value="englis">
+            <input type="hidden" name="item" value="6">
+            <input type="hidden" name="act" value="1">
+
+            <fieldset><legend>Syslog service options</legend>
+                <table>
+                    <tr>
+                        <td>Log Level</td>
+                    </tr>
+                    <tr>
+                        <td><select name="loglevel" size="1" >
+                            <option {LEVEL_SELECT_1}>Emerg</option>
+                            <option {LEVEL_SELECT_2}>Alert</option>
+                            <option {LEVEL_SELECT_3}>Critical</option>
+                            <option {LEVEL_SELECT_4}>Error</option>
+                            <option {LEVEL_SELECT_5}>Warning</option>
+                            <option {LEVEL_SELECT_6}>Notice</option>
+                            <option {LEVEL_SELECT_7}>Info</option>
+                            <option {LEVEL_SELECT_8}>Debug</option>
+                            </select>
+                        </td>
+                        <td>Message priority</td>
+                    </tr>
+
+                    <tr>
+                        <td><input type="checkbox" name="remoteLog" value="yes" onclick="checkState()" {REMOTE_STATE}></td>
+                        <!-- TODO help -->
+                        <td>remote log (network)</td>
+                    </tr>
+                </table>
+                <table>
+                    <tr>
+                        <td>Destination</td>
+                    </tr>
+                    <tr>
+                        <td><input type="text" size="20" maxlength="15" name="syslog_remote_ip" value="{REMOTE_IP_VALUE}" {ENABLE_REMOTE_LOGGING}></td>
+                        <td>destination host IP address</td>
+                    </tr>
+                    <tr>
+                        <td><input type="text" size="20" maxlength="15" name="syslog_remote_port" value="{REMOTE_PORT_VALUE}" {ENABLE_REMOTE_LOGGING}></td>
+                        <td>destination host port (default: 514)</td>
+                    </tr>
+                </table>
+            </fieldset>
+        <table align="right">
+            <tr>
+                <td> <input type="reset" name="Cancel_Button" value="Cancel"> </td>
+                <td> <input type="button" name="OK_Button" value="Apply" onclick="checkValues()"> </td>
+            </tr>
+        </table>
+    </form>
+</body>
+</html>

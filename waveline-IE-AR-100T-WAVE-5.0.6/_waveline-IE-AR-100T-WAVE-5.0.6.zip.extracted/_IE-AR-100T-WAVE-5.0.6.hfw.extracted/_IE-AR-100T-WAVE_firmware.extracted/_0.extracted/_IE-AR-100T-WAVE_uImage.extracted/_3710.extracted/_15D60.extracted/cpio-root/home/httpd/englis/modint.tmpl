@@ -1,0 +1,130 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta name="author" content="Henry Jesuiter, Enrico Kalliwoda">
+<meta name="description" content="English toc-page of the IAR / Heyfra GmbH">
+<meta name="date" content="2005-06-10 11:00:00">
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="cache-control" content="no-store">
+<meta http-equiv="expires" content="0">
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<title>Modem 1</title>
+<link rel="stylesheet" type="text/css" href="css/stile.css" media="screen">
+<style type="text/css">
+<!--
+div  { font-size:12px; position:absolute; top:130px; left:20px; height:60px; width:680px; visibility:hidden; }
+-->
+</style>
+<script type="text/javascript">
+<!--
+  function checkValues() {
+    document.Modem2Form.submit();
+  }
+
+  function chooseDiv(number) {
+    for (i = 1;i < 3; ++i) {
+      document.getElementById(String(i)).style.visibility = (number==i ? "visible" : "hidden");
+    }
+  }
+
+//-->
+</script>
+</head>
+<body onload="chooseDiv({EXT_MODEM_TYPE})">
+<form action="config.cgi" method="post" target="Main" name="Modem2Form">
+<input type="hidden" name="lang" value="englis">
+<input type="hidden" name="item" value="7">
+<input type="hidden" name="act" value="1">
+{INTERNAL_MODEM_FIELD}
+
+<div style="position:absolute; top:50px; left:20px; height:60px; width:680px; visibility:{ANALOG_MODEM}; ">
+  <table>
+  <tr>
+    <td>Country Code</td>
+    <td><select name="INT_country" size="1">{INT_COUNTRY_LIST}
+    </select> </td>
+    <td>the country the modem shall be used in</td>
+  </tr>
+  </table>
+</div>
+
+<div style="position:absolute; top:50px; left:20px; height:60px; width:680px; visibility:{ISDN_MODEM}; ">
+  <table border=0>
+    <tr>
+      <td><input type="text" size="25" name="INT_msn" value="{INT_ISDN_MSN}"></td>
+      <td>MSN</td>
+     </tr>
+    </tr>
+  </table>
+</div>
+
+<div style="position:absolute; top:50px; left:20px; height:60px; width:680px; visibility:{GSM_MODEM}; ">
+  <table>
+    <tr>
+      <td>AT-Kommando</td>
+      <td><input type="text" size="20" maxlength="100" name="INT_pinAT" value="{INT_GSM_ATCMD}"></td>
+    <td>AT-Kommando, um die PIN an Ihr GSM-Modem zu &uuml;bermitteln</td>
+    </tr>
+    <tr>
+      <td>PIN</td>
+      <td><input type="text" size="15" maxlength="32" name="INT_pin" value="{INT_GSM_PIN}"></td>
+    </tr>
+  </table>
+</div>
+
+<fieldset style="height:150px;"><legend>External Modem settings</legend>
+   <table><tr><td>{EXT_RADIO_OPTS}
+   </td></tr></table><hr>
+</fieldset>
+<table align="right">
+  <tr>
+    <td align="right" valign="bottom"> <input type="reset" name="Cancel_Button" value="Cancel"> </td>
+    <td align="right" valign="bottom"> <input type="button" name="OK_Button" value="Apply" onclick="checkValues()"> </td>
+  </tr>
+</table>
+
+<div id="1" style="position:absolute; top:{EXT_MODEM_POS}; left:20px; height:60px; width:680px; visibility:hidden; ">
+  <table>
+  <tr>
+    <td>Country Code</td>
+    <td><select name="EXT_country" size="1">{EXT_COUNTRY_LIST}
+    </select> </td>
+    <td>country the router is situated in</td>
+  </tr>
+  </table>
+</div>
+
+<div id="2" style="position:absolute; top:{EXT_MODEM_POS}; left:20px; height:60px; width:680px; visibility:hidden; ">
+  <table border=0>
+    <tr>
+      <td></td> 
+    </tr>
+  </table>
+</div>
+
+<div id="3" style="position:absolute; top:{EXT_MODEM_POS}; left:20px; height:60px; width:680px; visibility:hidden; ">
+  <table border=0>
+    <tr>
+      <td><input type="text" size="25" name="EXT_msn" value="{EXT_ISDN_MSN}"></td>
+      <td>MSN</td>
+    </tr>
+  </table>
+</div>
+
+<div id="4" style="position:absolute; top:{EXT_MODEM_POS}; left:20px; height:60px; width:680px; visibility:hidden; ">
+  <table>
+    <tr>
+      <td>AT-Kommando></td>
+      <td><input type="text" size="20" maxlength="100" name="EXT_pinAT" value="{EXT_GSM_ATCMD}"></td>
+    <td>AT-Kommando, um die PIN an Ihr GSM-Modem zu &uuml;bermitteln</td>
+    </tr>
+    <tr>
+      <td>PIN</td>
+      <td><input type="password" size="15" maxlength="32" name="EXT_pin" value="{EXT_GSM_PIN}"></td>
+    </tr>
+  </table>
+</div>
+
+</form>
+</body>
+</html>

@@ -1,0 +1,94 @@
+#!/bin/sh
+#DEBUG='yes'
+
+# include configs
+CONFIG_DIR="/tmp/ulsp"
+
+source $CONFIG_DIR/mapping.config
+
+valueOf() {
+	echo $(eval echo \$$1)
+}
+
+debug() {
+	if [ "$DEBUG" = "yes" ]
+	then
+		echo $1
+	fi	
+}
+
+clean() {
+	iptables -D FORWARD -j vmap
+	iptables -t nat -D PREROUTING -j vmap_dnat
+	iptables -t nat -D POSTROUTING -j vmap_snat
+
+	iptables -F vmap
+	iptables -t nat -F vmap_dnat
+	iptables -t nat -F vmap_snat
+
+	iptables -X vmap
+	iptables -t nat -X vmap_dnat
+	iptables -t nat -X vmap_snat
+}
+
+configure() {
+	# Virtual mapping
+	debug "configure virtual mapping ..."
+	iptables -N vmap
+	iptables -A FORWARD -p ALL -j vmap
+
+	iptables -t nat -N vmap_dnat
+	iptables -t nat -A PREROUTING -j vmap_dnat
+
+	iptables -t nat -N vmap_snat
+	iptables -t nat -A POSTROUTING -j vmap_snat
+
+	if [ "$VMAP_ITF" != "none" ]
+	then
+		ip_addr=$(ip addr show $VMAP_ITF | grep inet | grep global | cut -d" " -f6)
+		vmap_prefix=$(ipcalc -p $ip_addr | cut -d"=" -f2)
+
+		idx=1
+		while [ "$idx" -le "$VMAP_VIRTETH_N" ]
+		do
+			vmap_ip=$(valueOf VMAP_VIRTETH_${idx}_M2IP)
+			debug "FORWARD: to $vmap_ip"
+			iptables -A vmap -d $vmap_ip -j ACCEPT
+		
+			vmap_routerip=$(valueOf VMAP_VIRTETH_${idx}_IP2M)
+			ip addr add ${vmap_routerip}/${vmap_prefix} dev $VMAP_ITF broadcast +
+
+			iptables -t nat -A vmap_dnat -d $vmap_routerip -j DNAT --to $vmap_ip
+			iptables -t nat -A vmap_snat -s $vmap_ip -j SNAT --to $vmap_routerip
+
+			idx=$(expr $idx + 1)
+		done
+	
+	fi
+}
+
+NAME=fw_vmp
+DESC="iptables"
+SCRIPTNAME=/etc/init.d/S37$NAME
+
+case "$1" in
+    start)
+	  logger "Starting $DESC" $NAME
+	  configure
+      ;;
+    stop)
+	  logger "Stopping $DESC" $NAME
+	  clean
+      ;;
+    restart)
+	  logger "Reloading $DESC " $NAME
+	  clean
+	  configure
+      ;;
+    *)
+        echo "Usage: $SCRIPTNAME {start|stop|restart}" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

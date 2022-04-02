@@ -1,0 +1,93 @@
+std_msg: Zum Aktivieren der &Auml;nderungen m&uuml;ssen Sie Ihre Konfiguration speichern und das Ger&auml;t neu starten.
+
+blwhit_head:Black/White-Listen
+blwhit_rslt:Black/White-Listen erfolgreich konfiguriert.
+
+cbasis_head:Grundeinstellungen
+cbasis_rslt:Die Grundeinstellungen wurden erfolgreich vorgenommen.
+
+cccdns_head:DNS
+cccdns_rslt:DNS erfolgreich konfiguriert.
+
+cccvmp_head:Virtual Mapping (DNAT)
+cccvmp_rslt:Virtual Mapping erfolgreich konfiguriert.
+
+ccospf_head:OSPF Konfiguration
+ccospf_rslt:OSPF erfolgreich konfiguriert.
+
+ccovpn_head:OpenVPN Konfiguration
+ccovpn_rslt:OpenVPN erfolgreich konfiguriert.
+ccovpn_err1:Beim Kopieren des Schl&uuml;ssels ist ein Fehler aufgetreten.
+ccovpn_err2:Ein Fehler ist aufgetreten.
+
+ccsnmp_head:SNMP Konfiguration
+ccsnmp_rslt:SNMP erfolgreich konfiguriert.
+
+cctime_head:Einstellung der Zeit
+cctime_rslt:Zeit erfolgreich konfiguriert.
+
+cdebug_head:Systemprotokoll
+cdebug_rslt:Systemprotokoll erfolgreich konfiguriert.
+
+cdhcps_head:DHCP Server
+cdhcps_rslt:DHCP Server erfolgreich konfiguriert.
+
+cipsec_head:IPSec Konfiguration
+cipsec_rslt:IPSec erfolgreich konfiguriert.
+
+cpppoe_head:PPPoE Konfiguration
+cpppoe_rslt:PPPoE erfolgreich konfiguriert.
+
+crdial_head:Redundant Dialout Konfiguration
+crdial_rslt:Redundant Dialout erfolgreich konfiguriert.
+
+dialin_head:DialIn Konfiguration
+dialin_not_configured:Bitte konfigurieren sie zun&auml;chst ein externes Modem! Ein DialIn &uuml;ber ein DSL Modem ist nicht m&ouml;glich.
+dialin_rslt:DialIn erfolgreich konfiguriert.
+
+diaout_head:DialOut Konfiguration
+diaout_not_configured:Bitte konfigurieren Sie zun&auml;chst ein externes Modem.
+diaout_rslt:DialOut erfolgreich konfiguriert.
+
+distat_head:DigitalInput (DI) Konfiguration
+distat_rslt:DigitalInput (DI) erfolgreich konfiguriert.
+
+dyndns_head:Konfiguration eines dynamischen Namensdienstes (DynDNS)
+dyndns_rslt:DynDNS erfolgreich konfiguriert.
+
+facdef_head:Werkseinstellungen
+facdef_rslt:Werkseinstellungen geladen.
+
+fwruls_head:Konfiguration zus&auml;tzlicher Firewallregeln
+fwruls_rslt:Zus&auml;tzliche Firewallregeln erfolgreich konfiguriert.
+
+modint_head:Grundlegende Modemkonfiguration
+modint_rslt:Modem erfolgreich konfiguriert.
+
+portfi_head:Konfiguration des Portfilters
+portfi_rslt:Portfilter erfolgreich konfiguriert.
+
+portfw_head:Konfiguration der Portweiterleitung
+portfw_rslt:Portweiterleitung erfolgreich konfiguriert.
+
+update_head:Firmwareupdate Konfiguration
+update_rslt:Firmwareupdate erfolgreich konfiguriert.
+
+rstart_head:Router-Neustart
+rstart_rslt:Das dauert etwa eine Minute. Bitte danach aktualisieren.
+
+speich_head:Konfiguration speichern
+speich_rslt:Konfiguration erfolgreich gespeichert.
+
+statrt_head:Konfiguration der statischen Routen
+statrt_rslt:Statische Routen erfolgreich konfiguriert.
+
+netstat_head:Aktueller Netzwerkstatus
+timstat_head:Aktuelle Zeit
+logstat_head:Aktuelles Systemprotokoll
+
+mgcert_head:Zertifikat-Verwaltung
+mgcert_rslt:Die Zertifikat-&Auml;nderungen wurden eingepflegt.
+
+vpnca_head:Zertifikat-Erzeugung
+vpnca_rslt:Das Zertifikat wurde erzeugt.

@@ -1,0 +1,25 @@
+body         { font-family: Verdana, Arial, Helvetica, sans-serif; background-color:#C0C0C0; color:#000000; }
+div          { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; color:#000000; }
+h1           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:20px; color:#EC3D22; }
+h2           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:14px; color:#EC3D22; }
+h4           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; }
+p            { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; color:#000000; }
+fieldset     { font-family: Verdana, Arial, Helvetica, sans-serif; margin-top:7px; margin-bottom:2px; }
+label        { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; }
+legend       { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:14px; font-weight:bold; color:#EC3D22; }
+input        { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; height:20px; }
+select       { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; }
+textarea     { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; }
+table        { border-style:none; padding:0px; margin:0px; }
+th           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; }
+td           { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; }
+pre          { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; line-height:14px; }
+
+a            { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; text-decoration:none; color:#000000;
+               font-weight:normal; }
+a:visited    { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; text-decoration:none; color:#000000;
+               font-weight:normal; }
+a:hover      { font-family: Verdana, Arial, Helvetica, sans-serif; font-size:12px; text-decoration:underline; color:#EC3D22;
+               font-weight:normal; }
+
+.vistable    { border:1px; border-style:solid; padding:0px; margin:0px; border-collapse:collapse; empty-cells:show; }

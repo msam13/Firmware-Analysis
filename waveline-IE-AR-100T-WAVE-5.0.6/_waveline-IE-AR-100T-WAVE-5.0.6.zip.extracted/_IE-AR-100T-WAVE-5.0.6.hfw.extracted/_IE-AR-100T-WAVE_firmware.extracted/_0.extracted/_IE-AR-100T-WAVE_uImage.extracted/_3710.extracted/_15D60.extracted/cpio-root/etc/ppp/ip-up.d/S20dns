@@ -1,0 +1,30 @@
+#!/bin/sh
+# dns actions for dialout
+#
+source /tmp/ulsp/static.config
+source /tmp/ulsp/modem.config
+source /tmp/ulsp/dialout.config
+
+DNSFILE=/etc/resolv.conf
+
+if [ -z ${DNS1} -a -z ${DNS2} ]
+then
+  logger "your provider does not sent ip(s) for dns resolving."
+  logger "not modifying ${DNSFILE}."
+  return
+fi
+
+cp -p ${DNSFILE} ${DNSFILE}.prev
+grep -v "^nameserver " ${DNSFILE} > ${DNSFILE}.new
+for dns in ${DNS1} ${DNS2}
+do
+  echo "nameserver ${dns}" >> ${DNSFILE}.new
+  domove=true
+done
+
+if [ "${domove}" = "true" ]
+then
+  mv -f ${DNSFILE}.new ${DNSFILE}
+  chmod 666 ${DNSFILE}
+  /etc/init.d/S33dnsd restart
+fi

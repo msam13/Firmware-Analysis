@@ -1,0 +1,91 @@
+#!/bin/sh
+#DEBUG='yes'
+
+# include configs
+CONFIG_DIR="/tmp/ulsp"
+
+source $CONFIG_DIR/spec.config
+
+valueOf() {
+	echo $(eval echo \$$1)
+}
+
+debug() {
+	if [ "$DEBUG" = "yes" ]
+	then
+		echo $1
+	fi	
+}
+
+clean() {
+	iptables -D FORWARD -p ALL -j custom
+
+	iptables -F custom
+
+	iptables -X custom
+}
+
+configure() {
+	debug "configure custom rules ..."
+	iptables -N custom
+	iptables -A FORWARD -p ALL -j custom
+	idx=1
+	while [ "$idx" -le "$FW_RULES_N" ]
+	do
+		act=$(valueOf FW_RULES_${idx}_ACT)
+		srch=$(valueOf FW_RULES_${idx}_SRCHOST)
+		dsth=$(valueOf FW_RULES_${idx}_DSTHOST)
+		prot=$(valueOf FW_RULES_${idx}_PROT)
+		spts=$(valueOf FW_RULES_${idx}_SRCPORT)
+		dpts=$(valueOf FW_RULES_${idx}_DSTPORT)
+		
+		[ $srch = "-" ] && SRCHST="" || SRCHST="-s $srch"
+		[ $dsth = "-" ] && DSTHST="" || DSTHST="-d $dsth"
+
+		[ $spts = "-" ] && SRCPTS="" || SRCPTS="--sport $spts"
+		[ $dpts = "-" ] && DSTPTS="" || DSTPTS="--dport $dpts"
+
+		debug "FORWARD: $act $prot from $SRCHST port $SRCPTS to $DSTHST port $DSTPTS"
+
+        if [ -z "$DSTPTS" -a -z "$SRCPTS" ]
+        then	
+	       iptables -A custom -p $prot $DSTHST $SRCHST -j $act
+        else
+           if [  $prot = "ALL" ]
+           then
+	         iptables -A custom -p tcp $DSTHST $DSTPTS $SRCHST $SRCPTS -j $act
+	         iptables -A custom -p udp $DSTHST $DSTPTS $SRCHST $SRCPTS -j $act
+           else
+	         iptables -A custom -p $prot $DSTHST $DSTPTS $SRCHST $SRCPTS -j $act
+           fi
+        fi
+
+		idx=$(expr $idx + 1)
+	done
+}
+
+NAME=fw_custom
+DESC="iptables"
+SCRIPTNAME=/etc/init.d/S33$NAME
+
+case "$1" in
+    start)
+	  logger "Starting $DESC" $NAME
+	  configure
+      ;;
+    stop)
+	  logger "Stopping $DESC" $NAME
+	  clean
+      ;;
+    restart)
+	  logger "Reloading $DESC " $NAME
+	  clean
+	  configure
+      ;;
+    *)
+        echo "Usage: $SCRIPTNAME {start|stop|restart}" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

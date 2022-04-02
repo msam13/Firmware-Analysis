@@ -1,0 +1,292 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta name="author" content="Enrico Kalliwoda">
+<meta name="description" content="English toc-page of the IAR / type="text" GmbH">
+<meta name="date" content="2006-09-10 11:00:00">
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="cache-control" content="no-store">
+<meta http-equiv="expires" content="0">
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<title>Routing</title>
+<link rel="stylesheet" type="text/css" href="css/stile.css" media="screen">
+<script type="text/javascript">
+<!--
+function checkValues() {
+  document.fwrForm.submit();
+}
+
+function addEntry() {
+  var act=document.fwrForm.actn.options[document.fwrForm.actn.options.selectedIndex].text;
+  var sip=document.fwrForm.srcip.value;
+  var dip=document.fwrForm.dstip.value;
+  var prt=document.fwrForm.prot.options[document.fwrForm.prot.options.selectedIndex].text;
+  var spt=document.fwrForm.srcports.value;
+  var dpt=document.fwrForm.dstports.value;
+
+  if((prt == "all") && ((spt.length != 0) || (dpt.length != 0))) {
+    alert("Wenn eine Portnummer angegeben wird, muss; ein spezielles Protokoll gewaehlt werden.");
+    return;
+  }
+
+  if(sip.length == 0) {
+    sip="-";
+  }
+
+  if(spt.length == 0) {
+    spt="-";
+  }
+
+  if(dip.length == 0) {
+    dip="-";
+  }
+
+  if(dpt.length == 0) {
+    dpt="-";
+  }
+
+  var entry1 = new Option(act, act, false, false);
+  var entry2 = new Option(sip, sip, false, false);
+  var entry3 = new Option(dip, dip, false, false);
+  var entry4 = new Option(prt, prt, false, false);
+  var entry5 = new Option(spt, spt, false, false);
+  var entry6 = new Option(dpt, dpt, false, false);
+
+  document.fwrForm.act_list.options[document.fwrForm.act_list.length]=entry1;
+  document.fwrForm.actlist.value=document.fwrForm.actlist.value + act + " ";
+  document.fwrForm.srchost_list.options[document.fwrForm.srchost_list.length]=entry2;
+  document.fwrForm.srchostlist.value=document.fwrForm.srchostlist.value + sip + " ";
+  document.fwrForm.dsthost_list.options[document.fwrForm.dsthost_list.length]=entry3;
+  document.fwrForm.dsthostlist.value=document.fwrForm.dsthostlist.value + dip + " ";
+  document.fwrForm.prot_list.options[document.fwrForm.prot_list.length]=entry4;
+  document.fwrForm.protlist.value=document.fwrForm.protlist.value + prt + " ";
+  document.fwrForm.srcport_list.options[document.fwrForm.srcport_list.length]=entry5;
+  document.fwrForm.srcportlist.value=document.fwrForm.srcportlist.value + spt + " ";
+  document.fwrForm.dstport_list.options[document.fwrForm.dstport_list.length]=entry6;
+  document.fwrForm.dstportlist.value=document.fwrForm.dstportlist.value + dpt + " ";
+}
+
+
+  function delEntry() {
+    if(document.fwrForm.act_list.selectedIndex != -1) {
+      var idx=document.fwrForm.act_list.selectedIndex;
+      var act=document.fwrForm.actlist.value;
+      var actArray=act.split(" ");
+      var sip=document.fwrForm.srchostlist.value;
+      var sipArray=sip.split(" ");
+      var dip=document.fwrForm.dsthostlist.value;
+      var dipArray=dip.split(" ");
+      var prt=document.fwrForm.protlist.value;
+      var prtArray=prt.split(" ");
+      var spt=document.fwrForm.srcportlist.value;
+      var sptArray=spt.split(" ");
+      var dpt=document.fwrForm.dstportlist.value;
+      var dptArray=dpt.split(" ");
+
+      var newact="";
+      var newsip="";
+      var newdip="";
+      var newprt="";
+      var newspt="";
+      var newdpt="";
+      for (i=0; i<document.fwrForm.act_list.length; ++i) {
+        if (i != idx) {
+	  newact = newact + actArray[i] + " ";
+	  newsip = newsip + sipArray[i] + " ";
+	  newdip = newdip + dipArray[i] + " ";
+	  newprt = newprt + prtArray[i] + " ";
+	  newspt = newspt + sptArray[i] + " ";
+	  newdpt = newdpt + dptArray[i] + " ";
+	}
+      }
+      document.fwrForm.actlist.value=newact;
+      document.fwrForm.srchostlist.value=newsip;
+      document.fwrForm.dsthostlist.value=newdip;
+      document.fwrForm.protlist.value=newprt;
+      document.fwrForm.srcportlist.value=newspt;
+      document.fwrForm.dstportlist.value=newdpt;
+      document.fwrForm.act_list.options[idx]=null;
+      document.fwrForm.srchost_list.options[idx]=null;
+      document.fwrForm.dsthost_list.options[idx]=null;
+      document.fwrForm.prot_list.options[idx]=null;
+      document.fwrForm.srcport_list.options[idx]=null;
+      document.fwrForm.dstport_list.options[idx]=null;
+    } else {
+      alert("Bitte waehlen Sie einen zu loeschenden Eintrag!");
+    }
+  }
+
+
+  function isValidIP(ip, type) {
+    var result=true;
+
+    var numbers=ip.split(".");
+
+    if(numbers.length !=4) {
+      alert("Dies ist keine IP-Adresse. Bitte ueberpruefen!");
+      result=false;
+    } else {
+      for(i=0;i<numbers.length;++i) {
+        if(isNaN(numbers[i]) || (numbers[i]<0) || (numbers[i]>255)) {
+          alert("Dies ist keine IP-Adresse. Bitte ueberpruefen!");
+          result=false;
+	  break;
+	}
+      }
+
+      if(type=="Netzwerk") {
+        if(numbers[3] != 0) {
+          alert("Dies ist keine Netzwerk IP-Adresse. Netzwerkadressen enden immer auf Null (x.x.x.0)!");
+          result=false;
+        }
+      } else {
+        if(numbers[3] == 0) {
+          alert("Dies ist keine Host IP-Adresse. Sie haben eine Netzwerkadresse angegeben (x.x.x.0)!");
+          result=false;
+	}
+        if(numbers[3] == 255) {
+          alert("Dies ist keine Host IP-Adresse. Sie haben eine Broadcastadresse angegeben (x.x.x.255)!");
+          result=false;
+	}
+      }
+
+      if(numbers[0] >= 224) {
+        alert("Dies ist keine " + type + " IP-Adresse. Sie haben eine Multicast Adresse angegeben!");
+        result=false;
+      }
+
+      if(numbers[0] == 127) {
+        alert("Dies ist keine " + type + " IP-Adresse. 127.x.x.x ist ein reservierter Adressbereich!");
+        result=false;
+      }
+    }
+
+    return result;
+  }
+
+
+  function choose(idx) {
+    for(i=0;i<document.fwrForm.act_list.length;++i) {
+       document.fwrForm.act_list.options[i].selected=false;
+       document.fwrForm.srchost_list.options[i].selected=false;
+       document.fwrForm.dsthost_list.options[i].selected=false;
+       document.fwrForm.prot_list.options[i].selected=false;
+       document.fwrForm.srcport_list.options[i].selected=false;
+       document.fwrForm.dstport_list.options[i].selected=false;
+    }
+    document.fwrForm.act_list.options[idx].selected=true;
+    document.fwrForm.srchost_list.options[idx].selected=true;
+    document.fwrForm.dsthost_list.options[idx].selected=true;
+    document.fwrForm.prot_list.options[idx].selected=true;
+    document.fwrForm.srcport_list.options[idx].selected=true;
+    document.fwrForm.dstport_list.options[idx].selected=true;
+  }
+
+//-->
+</script>
+</head>
+<body>
+<form action="config.cgi" method="post" target="Main" name="fwrForm">
+  <input type="hidden" name="lang" value="deutsc">
+  <input type="hidden" name="item" value="36">
+  <input type="hidden" name="act" value="1">
+  <fieldset><legend>Spezielle FORWARD-Regeln</legend>
+    <table>
+    <tr>
+      <td>Aktion</td>
+      <td>
+        <select name="actn">
+          <option>DROP</option>
+          <option>REJECT</option>
+          <option>ACCEPT</option>
+        </select>
+      </td>
+      <td>was mit den Paketen geschehen soll</td>
+    </tr>
+    <tr>
+      <td>Protokoll</td>
+      <td>
+        <select name="prot">
+          <option selected>ALL</option>
+          <option>tcp</option>
+          <option>udp</option>
+          <!--<option>icmp</option>-->
+        </select>
+      </td>
+      <td> Protokoll-Typ, der erlaubt/verboten werden soll</td>
+    </tr>
+    <tr>
+      <td>Quell-Host</td>
+      <td><input type="text" size="15" maxlength="15" name="srcip"></td>
+      <td>IP-Adresse des Hosts, von dem die Pakete stammen</td>
+    </tr>
+    <tr>
+      <td>Zielport(:bereich)</td>
+      <td> <input type="text" size="11" maxlength="11" name="srcports"></td>
+      <td> Port oder Portbereich an den die Pakete geschickt werden</td>
+    </tr>
+    <tr>
+      <td>Ziel-Host</a></td>
+      <td><input type="text" size="15" maxlength="15" name="dstip"></td>
+      <td>IP-Adresse des Hosts, zu dem die Pakete weitergeleitet werden sollen</td>
+    </tr>
+    <tr>
+      <td>Ziel-Port(:bereich)</a></td>
+      <td> <input type="text" size="11" maxlength="11" name="dstports"></td>
+      <td> Port oder Portbereich des Hosts, zu dem die Pakete weitergeleitet werden sollen</td>
+    </tr>
+    <tr>
+      <td>
+        <input type="button" name="AddHost_Button" value="Hinzuf&uuml;gen" onclick="addEntry()"><br>
+      </td>
+    </tr>
+    </table>
+    <hr>
+    <table>
+    <tr>
+      <th colspan="6">vorhandene Forward-Regeln</th>
+    </tr>
+    <tr>
+      <td>Aktion</td>
+      <td>Protokoll</td>
+      <td>Src-Host</td>
+      <td>Src-Port</td>
+      <td>Dst-Host</td>
+      <td>Dst-Port</td>
+    </tr>
+    <tr>
+      <td><select name="act_list" size="10" onchange="choose(document.fwrForm.act_list.selectedIndex)">{ACTOPTS}
+      </select></td>
+      <td><select name="prot_list" size="10" onchange="choose(document.fwrForm.prot_list.selectedIndex)">{PROTOPTS}
+      </select></td>
+      <td><select name="srchost_list" size="10" onchange="choose(document.fwrForm.srchost_list.selectedIndex)">{SRCHOSTOPTS}
+      </select></td>
+      <td><select name="srcport_list" size="10" onchange="choose(document.fwrForm.srcport_list.selectedIndex)">{SRCPORTOPTS}
+      </select></td>
+      <td><select name="dsthost_list" size="10" onchange="choose(document.fwrForm.dsthost_list.selectedIndex)">{DSTHOSTOPTS}
+      </select></td>
+      <td><select name="dstport_list" size="10" onchange="choose(document.fwrForm.dstport_list.selectedIndex)">{DSTPORTOPTS}
+      </select></td>
+    </tr>
+    <tr>
+      <td colspan="5">
+        <input type="button" name="DelHost_Button" value="L&ouml;schen" onclick="delEntry()">
+      </td>
+    </tr>
+    </table>
+  </fieldset>
+  <input type="hidden" name="actlist" value="{ACTLIST}">
+  <input type="hidden" name="srchostlist" value="{SRCHOSTLIST}">
+  <input type="hidden" name="dsthostlist" value="{DSTHOSTLIST}">
+  <input type="hidden" name="protlist" value="{PROTLIST}">
+  <input type="hidden" name="srcportlist" value="{SRCPORTLIST}">
+  <input type="hidden" name="dstportlist" value="{DSTPORTLIST}">
+  <table align="right">
+  <tr>
+    <td><input type="reset" name="Cancel_Button" value="Abbrechen"></td>
+    <td><input type="button" name="OK_Button" value="&Uuml;bernehmen" onclick="checkValues()"></td>
+  </tr>
+  </table>
+</form>
+</body>
+</html>

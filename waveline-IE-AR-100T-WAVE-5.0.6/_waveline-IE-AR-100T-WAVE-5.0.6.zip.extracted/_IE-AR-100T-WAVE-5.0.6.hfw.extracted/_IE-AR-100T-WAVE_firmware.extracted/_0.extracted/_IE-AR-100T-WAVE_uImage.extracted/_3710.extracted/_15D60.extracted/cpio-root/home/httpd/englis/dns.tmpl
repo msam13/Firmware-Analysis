@@ -1,0 +1,147 @@
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta name="author" content="Henry Jesuiter, Enrico Kalliwoda">
+<meta name="description" content="WavelineRouter EIRM-100T / Heyfra GmbH">
+<meta name="date" content="2005-06-10 11:00:00">
+<meta http-equiv="expires" content="0">
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<meta http-equiv="cache-control" content="no-store">
+<meta http-equiv="pragma" content="no-cache">
+<title>IAR-Konfiguration: name server</title>
+<link rel="stylesheet" type="text/css" href="css/stile.css" media="screen">
+<script src="englis/auxfunc.js" type="text/javascript"></script>
+<script type="text/javascript">
+<!--
+  function choose(index) {
+   for(i=0;i<document.dnsForm.host_list.length;++i) {
+       document.dnsForm.host_list.options[i].selected=false;
+       document.dnsForm.ip_list.options[i].selected=false;
+    }
+
+   document.dnsForm.host_list.options[index].selected=true;
+   document.dnsForm.ip_list.options[index].selected=true;
+  }
+
+  function addEntry() {
+    var hostname=document.dnsForm.Hostname.value;
+    var ip=document.dnsForm.IPAdresse.value;
+
+    if(hostname.length != 0) {
+      if((ip.length != 0) && (isValidIP(ip))) {
+        var newHostname = new Option(hostname, hostname,false,false);
+        var newIPAddress = new Option(ip, ip,false,false);
+
+	document.dnsForm.host_list.options[document.dnsForm.host_list.length]=newHostname;
+	document.dnsForm.ip_list.options[document.dnsForm.ip_list.length]=newIPAddress;
+
+	document.dnsForm.hostlist.value = document.dnsForm.hostlist.value + hostname + " ";
+	document.dnsForm.iplist.value = document.dnsForm.iplist.value + ip + " ";
+	document.dnsForm.Hostname.value = "";
+	document.dnsForm.IPAdresse.value = "";
+      }
+    } else {
+      alert("Please enter a host name to add!")
+    }
+  }
+
+  function delEntry() {
+    if(document.dnsForm.host_list.selectedIndex != -1) {
+      var index=document.dnsForm.host_list.selectedIndex;
+      var hosts=document.dnsForm.hostlist.value;
+      var ips=document.dnsForm.iplist.value;
+
+      var hostArray=hosts.split(" ");
+      var ipArray=ips.split(" ");
+
+      var newhosts="";
+      var newips="";
+      for (i=0; i<document.dnsForm.host_list.length; ++i) {
+        if (i != index) {
+	  newhosts = newhosts + hostArray[i] + " ";
+	  newips = newips + ipArray[i] + " ";
+	}
+      }
+
+      document.dnsForm.host_list.options[index]=null;
+      document.dnsForm.ip_list.options[index]=null;
+      document.dnsForm.hostlist.value=newhosts;
+      document.dnsForm.iplist.value=newips;
+    } else {
+      alert("Please select a host to delete!");
+    }
+  }
+
+  function checkValues() {
+    var result=true;
+    var ip=document.dnsForm.Forwarder.value;
+    if(ip.length <= 0) {
+      alert("Please enter a valid IP for DNS forwarder!");
+      document.dnsForm.Forwarder.focus();
+      result=false;
+    }
+
+    if(result && (! isValidIP(ip))) {
+      document.dnsForm.Forwarder.focus();
+      result=false;
+    }
+
+    if(result==true) {
+      document.dnsForm.submit();
+    }
+  }
+
+//-->
+</script>
+</head>
+<body>
+<form action="config.cgi" method="post" target="Main" name="dnsForm">
+  <input type="hidden" name="lang" value="englis">
+  <input type="hidden" name="item" value="3">
+  <input type="hidden" name="act" value="1">
+  <fieldset><legend>Name server</legend>
+  <table>
+  <tr>
+    <td><label for="forwarder">DNS forwarder</label> </td>
+    <td> <input type="text" size="30" maxlength="75" id="forwarder" name="Forwarder" value="{FORWARDER}"> </td>
+    <td> DNS server(s) of your provider (or company)</td>
+  </tr>
+  </table>
+  <hr>
+  <h4>List of known hosts</h4>
+  <table>
+  <tr>
+  <td>Host name</td>
+  <td>IP address</td>
+  <td>&nbsp;</td>
+  <tr>
+    <td><input type="text" size="15" maxlength="25" id="host" name="Hostname"></td>
+    <td><input type="text" size="15" maxlength="15" id="adresse" name="IPAdresse"></td>
+   </tr><tr>
+    <td class="celltop"><input type="button" name="Add_Button" value="Add" onclick="addEntry()"></td>
+  </tr>
+  </table><hr><table>
+  <tr>
+    <td> <select name="host_list" size=5 onchange="choose(document.dnsForm.host_list.selectedIndex)">{HOSTOPTIONS}
+      </select> </td>
+    <td> <select name="ip_list" size=5 onchange="choose(document.dnsForm.ip_list.selectedIndex)">{IPOPTIONS}
+      </select> </td>
+    </tr><tr>
+    <td colspan=2><input type="button" name="Del_Button" value="Delete" onclick="delEntry()">
+    </td>
+  </tr>
+  </table>
+  </fieldset>
+  <input type="hidden" name="hostlist" value="{HOSTLIST}">
+  <input type="hidden" name="iplist" value="{IPLIST}">
+  <table align="right">
+  <tr>
+    <td> <input type="reset" name="Cancel_Button" value="Cancel"> </td>
+    <td> <input type="button" name="OK_Button" value="Apply" onclick="checkValues()"> </td>
+  </tr>
+  </table>
+</form>
+</body>
+</html>

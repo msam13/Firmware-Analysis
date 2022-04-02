@@ -1,0 +1,15 @@
+#!/bin/sh
+# restore the DNS settings
+#
+source /tmp/ulsp/static.config
+source /tmp/ulsp/modem.config
+source /tmp/ulsp/dialout.config
+
+DNSFILE=/etc/resolv.conf
+
+if [ -f ${DNSFILE}.prev ]
+then
+  mv -f ${DNSFILE}.prev ${DNSFILE}
+  chmod 666 ${DNSFILE}
+  /etc/init.d/S33dnsd restart
+fi

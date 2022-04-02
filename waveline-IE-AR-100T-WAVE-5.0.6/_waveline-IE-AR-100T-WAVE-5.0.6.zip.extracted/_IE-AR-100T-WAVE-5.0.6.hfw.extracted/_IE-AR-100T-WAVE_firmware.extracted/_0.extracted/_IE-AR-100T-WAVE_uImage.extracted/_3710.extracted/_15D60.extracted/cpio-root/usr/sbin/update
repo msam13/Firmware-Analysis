@@ -1,0 +1,151 @@
+#!/bin/sh
+
+PWD=$(pwd)
+
+# load config
+KEY_DIR=/tmp/keys
+
+source /tmp/ulsp/update.config
+
+update_help () {
+        echo "Please define your target."
+        echo "Usage: 'update <target>'"
+        echo "   where <target> is required and one of:"
+        echo "       firmware        download and update current firmware to another version"
+        echo "       firmware-local  update current firmware to another version from local image"
+        echo "       openvpn         download and save openvpn server keys"
+        echo "   and <url> is optional, that consists of protocol, path and filename."
+        echo "   f.e.: ftp://192.168.1.100/router/analog/firmware_1_0_0"
+        echo ""
+}
+
+error () {
+   logger -t update -p user.err $1
+   echo "ERROR: $1"
+}
+
+notice () {
+   logger -t update -p user.notice $1
+   echo "NOTE: $1"
+}
+
+update_firmware () {
+    # lock configuration
+    touch /tmp/firmware.pid
+    # try to get firmware
+    if [ -f /tmp/upload/IE-AR-100T-WAVE_firmware ]
+    then
+      tar xjf /tmp/upload/IE-AR-100T-WAVE_firmware -C /tmp/update
+    else
+      wget $url -O - | tar xjf - -C /tmp/update
+      if [ $? -eq 1 ]
+      then
+        error "Could not download firmware file!"
+      fi
+    fi
+
+    install_firmware
+}
+
+install_firmware () {
+    # check if we have the right firmware here
+    old_deviceID=$(cat /etc/deviceID | sed 's/AN-//g' | sed 's/ISDN-//g' | sed 's/GSM-//g')
+    new_deviceID=$(cat /tmp/update/deviceID 2>/dev/null)
+	if [ -z "$old_deviceID" -o "$old_deviceID" != "$new_deviceID" ]
+	then
+		error "This firmware file is not suitable for this device!"
+        exit 1
+	fi
+
+    # clean up old rootfs, but only the size needed
+    FILE_SIZE=$(du /tmp/update/${new_deviceID}_uImage | cut -f1)
+    SECT_CNT=$(expr $(expr ${FILE_SIZE} / 128) + 1) 
+
+	# maximum len of firmware is 16MB
+    if [ ${SECT_CNT} -gt 128 ]
+    then
+        error "This firmware file is to big. It should be 16MB at maximum!"
+        exit 1
+    fi
+
+    # try to execute preudpate_script
+    if [ -f /tmp/update/preupdate_tasks ]
+    then
+        /bin/sh /tmp/update/preupdate_tasks
+    fi
+
+    # now install new firmware if allowed
+    flashcp -v /tmp/update/${new_deviceID}_uImage /dev/mtd1
+    if [ $? -ne 0 ]
+    then
+       error "Could not update the router!"
+       exit 1
+    fi
+
+    # try to execute postudpate_script
+    if [ -f /tmp/update/postupdate_tasks ]
+    then
+        /bin/sh /tmp/update/postupdate_tasks
+    fi
+
+    # unlock configuration
+    rm /tmp/firmware.pid
+}
+
+update_keys () {
+    # try to get VPN keys
+    wget ${UPDATE_PROTOCOL}://${UPDATE_SERVER}/${UPDATE_PATH}/static.key -O ${KEY_DIR}/${1}/static.key
+    if [ $? -eq 1 ]
+    then
+        error "Could not download $1 key file!" 
+        exit 1
+    fi
+
+    cp ${KEY_DIR}/${1}/static.key ${KEY_DIR}/${1}/temp.key
+
+    /usr/sbin/save $1
+
+    notice "To activate the keys please restart the router!"
+}
+
+if [ -z $1 ]
+then
+    update_help
+    exit 0
+fi
+
+if [ $# -eq 2 ]
+then
+    echo $2
+    url=$2
+    UPDATE_SERVER=$(echo $url | cut -d"/" -f3)
+else
+    url=${UPDATE_PROTOCOL}://${UPDATE_SERVER}/${UPDATE_PATH}/${UPDATE_FILE}
+fi
+
+# ping to investigate if server is reachable
+ping -c 1 ${UPDATE_SERVER} > /dev/null
+if [ $? -eq 1 ]
+then
+	error "Could not find update server: ${UPDATE_SERVER}!" 
+	exit 1
+fi
+
+case $1 in
+   firmware)
+      notice "Starting firmware update ..."
+      mkdir -p /tmp/update 
+      update_firmware
+      rm -rf /tmp/update 
+      notice "Firmware update completed successfully."
+   ;;
+   openvpn|ssh)
+      notice "Update $1 keys from server ... "
+      update_keys $1
+      notice "Key import completed successfully."
+   ;;
+   *)
+      update_help
+   ;;
+esac
+

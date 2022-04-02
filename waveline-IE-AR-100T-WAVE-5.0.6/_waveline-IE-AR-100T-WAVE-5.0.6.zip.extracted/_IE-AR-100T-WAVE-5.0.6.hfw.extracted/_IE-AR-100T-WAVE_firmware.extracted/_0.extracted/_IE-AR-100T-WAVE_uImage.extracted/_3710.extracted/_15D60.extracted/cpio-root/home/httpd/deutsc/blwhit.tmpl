@@ -1,0 +1,213 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta name="author" content="Henry Jesuiter, Enrico Kalliwoda">
+<meta name="description" content="English toc-page of the IAR / Heyfra GmbH">
+<meta name="date" content="2005-06-10 11:00:00">
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="cache-control" content="no-store">
+<meta http-equiv="expires" content="0">
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<title>Routing</title>
+<link rel="stylesheet" type="text/css" href="css/stile.css" media="screen">
+<script type="text/javascript">
+<!--
+
+  function addEntry() {
+    var ip=document.routeForm.hostip.value;
+    var prot=document.routeForm.prot.options[document.routeForm.prot.options.selectedIndex].text;
+    var port=document.routeForm.ports.value;
+
+    if((ip.length != 0) && isValidIP(ip,"Host")) {
+      if((prot=="all") && (port.length != 0)) {
+        alert("Ports sind an spezielle Protokolle gebunden. Bitte loeschen Sie die Portangaben oder waehlen Sie ein Protokoll!");
+      } else {
+        if (port.length == 0) {
+          port="-";
+        }
+
+        var entry1=new Option(ip, ip, false, false);
+        var entry2=new Option(prot, prot, false, false);
+        var entry3=new Option(port, port, false, false);
+
+        document.routeForm.host_list.options[document.routeForm.host_list.length]=entry1;
+        document.routeForm.hostlist.value=document.routeForm.hostlist.value + ip + " ";
+        document.routeForm.prot_list.options[document.routeForm.prot_list.length]=entry2;
+        document.routeForm.protlist.value=document.routeForm.protlist.value + prot + " ";
+        document.routeForm.port_list.options[document.routeForm.port_list.length]=entry3;
+        document.routeForm.portlist.value=document.routeForm.portlist.value + port + " ";
+      }
+    }
+  }
+
+  function delEntry() {
+    if(document.routeForm.host_list.selectedIndex != -1) {
+      var index=document.routeForm.host_list.selectedIndex;
+
+      var nets=document.routeForm.hostlist.value;
+      var netArray=nets.split(" ");
+      var prots=document.routeForm.protlist.value;
+      var protArray=prots.split(" ");
+      var ports=document.routeForm.portlist.value;
+      var portArray=ports.split(" ");
+
+      var newnets="";
+      var newprots="";
+      var newports="";
+      for (i=0; i<document.routeForm.host_list.length; ++i) {
+        if (i != index) {
+	  newnets = newnets + netArray[i] + " ";
+	  newprots = newprots + protArray[i] + " ";
+	  newports = newports + portArray[i] + " ";
+	}
+      }
+
+      document.routeForm.host_list.options[index]=null;
+      document.routeForm.hostlist.value=newnets;
+      document.routeForm.prot_list.options[index]=null;
+      document.routeForm.protlist.value=newprots;
+      document.routeForm.port_list.options[index]=null;
+      document.routeForm.portlist.value=newports;
+    } else {
+      alert("Bitte waehlen Sie einen zu loeschenden Eintrag!");
+    }
+  }
+
+  function isValidIP(ip, type) {
+    var result=true;
+
+    var numbers=ip.split(".");
+
+    if(numbers.length !=4) {
+      alert("Dies ist keine IP-Adresse. Bitte ueberpruefen!");
+      result=false;
+    } else {
+      for(i=0;i<numbers.length;++i) {
+        if(isNaN(numbers[i]) || (numbers[i]<0) || (numbers[i]>255)) {
+          alert("Dies ist keine IP-Adresse. Bitte ueberpruefen!");
+          result=false;
+	  break;
+	}
+      }
+
+      if(type=="Netzwerk") {
+        if(numbers[3] != 0) {
+          alert("Dies ist keine Netzwerk IP-Adresse. Netzwerkadressen enden immer auf Null (x.x.x.0)!");
+          result=false;
+        }
+      } else {
+        if(numbers[3] == 0) {
+          alert("Dies ist keine Host IP-Adresse. Sie haben eine Netzwerkadresse angegeben (x.x.x.0)!");
+          result=false;
+	}
+        if(numbers[3] == 255) {
+          alert("Dies ist keine Host IP-Adresse. Sie haben eine Broadcastadresse angegeben (x.x.x.255)!");
+          result=false;
+	}
+      }
+
+      if(numbers[0] >= 224) {
+        alert("Dies ist keine " + type + " IP-Adresse. Sie haben eine Multicast Adresse angegeben!");
+        result=false;
+      }
+
+      if(numbers[0] == 127) {
+        alert("Dies ist keine " + type + " IP-Adresse. 127.x.x.x ist ein reservierter Adressbereich!");
+        result=false;
+      }
+    }
+
+    return result;
+  }
+
+  function choose(idx) {
+    for(i=0;i<document.routeForm.host_list.length;++i) {
+       document.routeForm.host_list.options[i].selected=false;
+       document.routeForm.port_list.options[i].selected=false;
+       document.routeForm.prot_list.options[i].selected=false;
+    }
+    document.routeForm.host_list.options[idx].selected=true;
+    document.routeForm.port_list.options[idx].selected=true;
+    document.routeForm.prot_list.options[idx].selected=true;
+  }
+
+//-->
+</script>
+</head>
+<body>
+<form action="config.cgi" method="post" target="Main" name="routeForm">
+  <input type="hidden" name="lang" value="deutsc">
+  <input type="hidden" name="item" value="32">
+  <input type="hidden" name="act" value="1">
+  <fieldset><legend>Black/white-Listen</legend>
+    <table>
+    <tr>
+      <td><input type="radio" name="whiteList" value="white" {CHECK1}></td>
+      <td>Hostliste ist White-List</td>
+      <td><input type="radio" name="whiteList" value="black" {CHECK2}></td>
+      <td>Hostliste ist Black-List</td>
+    </tr>
+    </table>
+    <table>
+    <tr>
+      <td>Host</td>
+      <td> <input type="text" size="15" maxlength="15" name="hostip"></td>
+      <td> IP-Adresse des Hosts, dem der Zugang zu gerouteten Netzen erlaubt/verboten werden soll</td>
+    </tr>
+    <tr>
+      <td>Protokoll</td>
+      <td>
+        <select name="prot">
+          <option selected>ALL</option>
+          <option>tcp</option>
+          <option>udp</option>
+        </select>
+      </td>
+      <td> Protokoll, das erlaubt/verboten werden soll</td>
+    </tr>
+    <tr>
+      <td>Port(:bereich)</td>
+      <td> <input type="text" size="11" maxlength="11" name="ports"></td>
+      <td> Port/Portbereich des Hosts, auf dem der Zugang zu den gerouteten Netzen erlaubt/verboten werden soll</td>
+    </tr>
+    <tr>
+      <td colspan="3"><input type="button" name="AddHost_Button" value="Hinzuf&uuml;gen" onclick="addEntry();"></td>
+    </tr>
+    </table>
+    <hr>
+    <table>
+    <tr>
+      <th colspan="3">aktuelle Liste</th>
+    </tr>
+    <tr>
+      <td>Host</td>
+      <td>Protokoll</td>
+      <td>Port</td>
+    </tr>
+    <tr>
+      <td><select name="host_list" size="10" onchange="choose(document.routeForm.host_list.selectedIndex)">{HOSTOPTS}
+      </select></td>
+      <td><select name="prot_list" size="10" onchange="choose(document.routeForm.prot_list.selectedIndex)">{PROTOPTS}
+      </select></td>
+      <td><select name="port_list" size="10" onchange="choose(document.routeForm.port_list.selectedIndex)">{PORTOPTS}
+      </select></td>
+    </tr>
+    <tr>
+      <td>
+        <input type="button" name="DelHost_Button" value="L&ouml;schen" onclick="delEntry();">
+      </td>
+    </tr>
+    </table>
+  </fieldset>
+  <input type="hidden" name="hostlist" value="{HOSTLIST}">
+  <input type="hidden" name="protlist" value="{PROTLIST}">
+  <input type="hidden" name="portlist" value="{PORTLIST}">
+  <table align="right">
+  <tr>
+    <td><input type="reset" name="Cancel_Button" value="Abbrechen"></td>
+    <td><input type="submit" name="OK_Button" value="&Uuml;bernehmen"></td>
+  </tr>
+  </table>
+</form>
+</body>
+</html>

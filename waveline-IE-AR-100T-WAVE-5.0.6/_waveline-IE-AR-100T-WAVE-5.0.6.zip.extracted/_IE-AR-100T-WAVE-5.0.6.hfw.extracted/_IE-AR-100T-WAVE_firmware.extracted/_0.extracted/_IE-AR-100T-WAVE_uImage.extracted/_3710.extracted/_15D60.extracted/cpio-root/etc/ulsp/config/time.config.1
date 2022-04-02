@@ -1,0 +1,52 @@
+# enable NTP server
+# values: 'yes', 'no'
+OPT_NTP='no'
+
+# stratum of the device
+# values: between 1 and 15 (but better never < 5)
+NTP_LOCAL_STRATUM='10'
+
+NTP_ON_BOOT='no'
+
+# Number of remote NTP
+NTP_REMOTE_N='4'
+
+# remote time server to use (we probably don't have a RTC)
+# value: any legal ip or hostname
+NTP_REMOTE_1_IP='0.de.pool.ntp.org'
+
+# type of remote NTP server
+# values: 'server', 'peer'
+NTP_REMOTE_1_TYPE='server'
+NTP_REMOTE_1_PORT='123'
+
+NTP_REMOTE_2_IP='1.de.pool.ntp.org'
+NTP_REMOTE_2_TYPE='server'
+NTP_REMOTE_2_PORT='123'
+
+NTP_REMOTE_3_IP='2.de.pool.ntp.org'
+NTP_REMOTE_3_TYPE='server'
+NTP_REMOTE_3_PORT='123'
+
+NTP_REMOTE_4_IP='3.de.pool.ntp.org'
+NTP_REMOTE_4_TYPE='server'
+NTP_REMOTE_4_PORT='123'
+
+# Interface to send NTP broadcasts
+# value: 'none', 'eth0', 'eth1'
+NTP_BROADCAST_ITF='none'
+
+# Broadcast interval in seconds
+# value: between 30 and 500
+NTP_BROADCAST_INTERVAL='30'
+
+# Interface to listen for NTP requests
+# values: 'none', 'eth0', 'eth1'
+NTP_SERVER_ITF='none'
+
+# timezone where the device is working
+# values: unix specific timezone
+NTP_TIME_INFO='UCT-1UCST,M3.5.0,M10.5.0'
+
+# ATTENTION: NEED TO BE DOCUMENTED
+NTP_TZ_IDX='0'

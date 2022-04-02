@@ -1,0 +1,273 @@
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <meta name="author" content="Henry Jesuiter, Enrico Kalliwoda">
+  <meta name="description" content="English toc-page of the IAR / Heyfra GmbH">
+  <meta name="date" content="2005-06-10 11:00:00">
+  <meta http-equiv="expires" content="0">
+  <meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+  <title>Dialout configuration</title>
+<link rel="stylesheet" type="text/css" href="css/stile.css" media="screen">
+<script type="text/javascript">
+<!--
+  function enableForm() {
+    if(document.dialoutForm.dialout_dev.options[0].selected == true) {
+      document.dialoutForm.Cmnd.disabled=true;
+      document.dialoutForm.Timeout.disabled=true;
+      document.dialoutForm.doutnum.disabled=true;
+      document.dialoutForm.doutdelay.disabled=true;
+      document.dialoutForm.Name.disabled=true;
+      document.dialoutForm.Number.disabled=true;
+      document.dialoutForm.User.disabled=true;
+      document.dialoutForm.Pass.disabled=true;
+      document.dialoutForm.target_nameList.disabled=true;
+      document.dialoutForm.target_dialList.disabled=true;
+      document.dialoutForm.target_userList.disabled=true;
+      document.dialoutForm.Add_Button.disabled=true;
+      document.dialoutForm.Del_Button.disabled=true;
+      document.dialoutForm.Sel_Button.disabled=true;
+      document.dialoutForm.selname.disabled=true;
+    } else {
+      document.dialoutForm.Cmnd.disabled=false;
+      document.dialoutForm.Timeout.disabled=false;
+      document.dialoutForm.doutnum.disabled=false;
+      document.dialoutForm.doutdelay.disabled=false;
+      document.dialoutForm.Name.disabled=false;
+      document.dialoutForm.Number.disabled=false;
+      document.dialoutForm.User.disabled=false;
+      document.dialoutForm.Pass.disabled=false;
+      document.dialoutForm.target_nameList.disabled=false;
+      document.dialoutForm.target_dialList.disabled=false;
+      document.dialoutForm.target_userList.disabled=false;
+      document.dialoutForm.Add_Button.disabled=false;
+      document.dialoutForm.Del_Button.disabled=false;
+      document.dialoutForm.Sel_Button.disabled=false;
+      document.dialoutForm.selname.disabled=false;
+    }
+  }
+
+  function choose(idx) {
+    for(i=0;i<document.dialoutForm.target_nameList.length;++i) {
+       document.dialoutForm.target_nameList.options[i].selected=false;
+       document.dialoutForm.target_dialList.options[i].selected=false;
+       document.dialoutForm.target_userList.options[i].selected=false;
+    }
+
+    document.dialoutForm.target_nameList.options[idx].selected=true;
+    document.dialoutForm.target_dialList.options[idx].selected=true;
+    document.dialoutForm.target_userList.options[idx].selected=true;
+    document.dialoutForm.pass.value = document.dialoutForm.passlist.value.split(" ")[idx];
+  }
+
+  function addTarget() {
+    var name=document.dialoutForm.Name.value;
+    var number=document.dialoutForm.Number.value;
+    var user=document.dialoutForm.User.value;
+    var pass=document.dialoutForm.Pass.value;
+
+    if(name.length == 0) {
+      alert("Please insert a number to dialout to!");
+      return;
+    }
+
+    if(number.length == 0) {
+      number="N/A";
+    }
+
+    if((user.length == 0) && (pass.length == 0)) {
+      alert("Please insert an username and a password for the new target!");
+      return;
+    }
+
+    var newName = new Option(name, name, false, false);
+    var newNumber = new Option(number, number, false, false);
+    var newUser = new Option(user, user, false, false);
+
+    document.dialoutForm.target_nameList.options[document.dialoutForm.target_nameList.length] = newName;
+    document.dialoutForm.target_dialList.options[document.dialoutForm.target_dialList.length] = newNumber;
+    document.dialoutForm.target_userList.options[document.dialoutForm.target_userList.length] = newUser;
+
+    document.dialoutForm.namelist.value=document.dialoutForm.namelist.value+ name  + " " ;
+    document.dialoutForm.numberlist.value=document.dialoutForm.numberlist.value+ number  + " " ;
+    document.dialoutForm.userlist.value=document.dialoutForm.userlist.value+ user  + " " ;
+    document.dialoutForm.passlist.value=document.dialoutForm.passlist.value+ pass  + " " ;
+    document.dialoutForm.Name.value="";
+    document.dialoutForm.Number.value="";
+    document.dialoutForm.User.value="";
+    document.dialoutForm.Pass.value="";
+  }
+
+  function delTarget() {
+    if (document.dialoutForm.target_nameList.selectedIndex != -1) {
+      var index=document.dialoutForm.target_nameList.selectedIndex;
+
+      var names=document.dialoutForm.namelist.value;
+      var numbers=document.dialoutForm.numberlist.value;
+      var users=document.dialoutForm.userlist.value;
+      var passes=document.dialoutForm.passlist.value;
+
+      var nameArray=names.split(" ");
+      var numberArray=numbers.split(" ");
+      var userArray=users.split(" ");
+      var passArray=passes.split(" ");
+
+      var newNames="";
+      var newNumbers="";
+      var newUsers="";
+      var newPasses="";
+      for(i=0;i<document.dialoutForm.target_nameList.length;++i) {
+        if(i != (index)) {
+	  newNames=newNames + nameArray[i] + " ";
+	  newNumbers=newNumbers + numberArray[i] + " ";
+	  newUsers=newUsers + userArray[i] + " ";
+	  newPasses=newPasses + passArray[i] + " ";
+        }
+      }
+
+      document.dialoutForm.target_nameList.options[index]=null;
+      document.dialoutForm.target_dialList.options[index]=null;
+      document.dialoutForm.target_userList.options[index]=null;
+
+      document.dialoutForm.namelist.value=newNames;
+      document.dialoutForm.numberlist.value=newNumbers;
+      document.dialoutForm.userlist.value=newUsers;
+      document.dialoutForm.passlist.value=newPasses;
+      with (document.dialoutForm) {
+        selno.value="1";
+        selname.value = target_nameList.options[0].value;
+      }
+    } else {
+      alert("Please select an entry to delete!");
+    }
+  }
+
+  function selTarget() {
+    if (document.dialoutForm.target_nameList.selectedIndex != -1) {
+      with (document.dialoutForm) {
+        selno.value = target_nameList.selectedIndex+1;
+        selname.value = target_nameList.options[target_nameList.selectedIndex].value;
+      }
+    } else {
+      document.dialoutForm.selno.value="1";
+      alert("Please choose a target!");
+    }
+  }
+
+  function checkValues() {
+      document.dialoutForm.submit();
+  }
+//-->
+</script>
+</head>
+<body>
+<form action="config.cgi" method="post" target="Main" name="dialoutForm">
+<input type="hidden" name="lang" value="englis">
+<input type="hidden" name="item" value="9">
+<input type="hidden" name="act" value="1">
+<input type="hidden" name="dialout" value="ttyS2">
+
+{NO_DIALOUT_MESSAGE}
+
+<div id="dialoutParam" style="visibility:{DIALOUT_VISIBILITY};">
+<fieldset><legend>Modem options</legend>
+<table>
+<tr>
+   <td> DialOut-Modem </td> 
+   <td> <select name="dialout_dev" size="1" onchange=enableForm()> {DIALOUT_DEV} </select></td>
+</tr>
+<!--
+<tr>
+  <td>APN</td>
+  <td><input type="text" size="30" maxlength="40" name="apn" value="{APN}" {ALLOW}></td>
+  <td>(for GPRS only)</td>
+</tr>
+-->
+<tr style="visibility:{DIALOUT_ANALOG_VISIBILITY};">
+  <td>Dial-out modem commands</td>
+  <td><input type="text" size="15" maxlength="35" name="Cmnd" value="{CMND}" {ALLOW}></td>
+    <td>additional AT commands to send to the modem</td>
+</tr>
+<tr>
+  <td>Dial-out timeout</td>
+  <td><input type="text" size="15" maxlength="5" name="Timeout" value="{DELAY}" {ALLOW}></td>
+    <td>connection idle time to hang up the modem</td>
+</tr>
+<tr>
+  <td>Maximum number</td>
+  <td><input type="text" size="15" maxlength="5" name="doutnum" value="{DOUTNUM}" {ALLOW}></td>
+  <td>of failed dialout attempts</td>
+</tr>
+<tr>
+  <td>Delay time</td>
+  <td><input type="text" size="15" maxlength="5" name="doutdelay" value="{DOUTDELAY}" {ALLOW}></td>
+  <td>after a failed dialout attempt until the next starts, in seconds</td>
+</tr>
+</table>
+</fieldset>
+<fieldset><legend>Dial-out targets</legend>
+<table>
+<tr>
+  <td>Target name</td>
+  <td><input type="text" size="20" maxlength="20" name="Name" value="" {ALLOW}> </td>
+    <td>name of the target to add</td>
+</tr>
+<tr style="visibility:{DIALOUT_ANALOG_VISIBILITY};">
+  <td>Dial-out number</td>
+  <td><input type="text" size="20" maxlength="20" name="Number" value="" {ALLOW}> </td>
+    <td>number to dialout to</td>
+</tr>
+<tr>
+  <td>Dial-out user</td>
+  <td><input type="text" size="20" maxlength="63" name="User" value="" {ALLOW}></td>
+    <td>your username at your internet provider</td>
+</tr>
+<tr>
+  <td>Dial-out password</td>
+  <td><input type="text" size="20" maxlength="30" name="Pass" value="" {ALLOW}></td>
+    <td>your password at your internet provider</td>
+</tr>
+<tr>
+<td><input type="button" name="Add_Button" value="Add" onclick="addTarget()" {ALLOW}></td>
+</tr>
+</table>
+<hr>
+    <h4>List of configured targets</h4>
+<table>
+<tr>
+    <td>name</td><td>number</td><td>user</td><td>&nbsp;</td><td>actually selected target</td>
+</tr>
+<tr>
+  <td><select name="target_nameList" size="5" onchange="choose(document.dialoutForm.target_nameList.selectedIndex)" {ALLOW}>{NAMEOPTS}
+  </select></td>
+  <td><select name="target_dialList" size="5" onchange="choose(document.dialoutForm.target_dialList.selectedIndex)" {ALLOW}>{NMBOPTS}
+  </select></td>
+  <td><select name="target_userList" size="5" onchange="choose(document.dialoutForm.target_userList.selectedIndex)" {ALLOW}>{USROPTS}
+  </select></td>
+  <td><input type="button" name="Sel_Button" value="Select" onclick="selTarget()" {ALLOW}>
+  </td>
+  <td><input type="text" name="selname" value="{SELNAME}"  {ALLOW} readonly></td>
+</tr>
+  <tr>
+    <td><input type="button" name="Del_Button" value="Delete" onclick="delTarget()" {ALLOW}></td>
+  </tr>
+</table>
+</fieldset>
+<table align="right">
+<tr>
+  <td><input type="reset" name="Cancel_Button" value="Cancel"></td>
+  <td><input type="button" name="OK_Button" value="Apply" onclick="checkValues()"></td>
+</tr>
+</table>
+  <input type="hidden" name="selno" value="{SELNO}">
+  <input type="hidden" name="namelist" value="{NAMELIST}">
+  <input type="hidden" name="numberlist" value="{NMBLIST}">
+  <input type="hidden" name="userlist" value="{USRLIST}">
+  <input type="hidden" name="passlist" value="{PASSLIST}">
+  <input type="hidden" name="pass" value="{PASS}">
+</div>
+
+</form>
+</body>
+</html>

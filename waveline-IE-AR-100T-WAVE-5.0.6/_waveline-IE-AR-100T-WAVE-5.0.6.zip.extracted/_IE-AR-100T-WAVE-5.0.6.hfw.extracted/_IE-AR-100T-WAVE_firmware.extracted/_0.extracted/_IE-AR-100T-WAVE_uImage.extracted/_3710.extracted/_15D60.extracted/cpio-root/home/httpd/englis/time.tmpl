@@ -1,0 +1,268 @@
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta name="author" content="Henry Jesuiter, Enrico Kalliwoda">
+<meta name="description" content="English toc-page of the IAR / Heyfra GmbH">
+<meta name="date" content="2005-12-10 18:00:00">
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="cache-control" content="no-store">
+<meta http-equiv="expires" content="0">
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<title>EIMR-Konfiguration: Zeitserver</title>
+<link rel="stylesheet" type="text/css" href="css/stile.css" media="screen">
+<style type="text/css">
+<!--
+div  { font-size:12px; position:absolute; top:80px; left:0px; height:auto; width:100%; visibility:hidden; }
+-->
+</style>
+<script src="englis/auxfunc.js" type="text/javascript"></script>
+<script type="text/javascript">
+<!--
+
+
+var yy={YEAR};
+var mo={MONTH};
+var dd={DAY};
+var hh={HOUR};
+var mi={MIN};
+var ss={SEC};
+
+function initPage() {
+  chooseDiv(1);
+  settime();
+  getidx();
+}
+
+
+function chooseDiv(number) {
+  for (i = 1;i < 3; ++i) {
+    document.getElementById(String(i)).style.visibility = (number==i ? "visible" : "hidden");
+  }
+}
+
+function settime() {
+  document.timeForm2.jahr.value = String(yy+1900);
+  document.timeForm2.monat.selectedIndex = mo;
+  document.timeForm2.tag.selectedIndex = dd-1;
+  document.timeForm2.std.selectedIndex = hh;
+  document.timeForm2.min.selectedIndex = mi;
+  document.timeForm2.sek.selectedIndex = ss;
+}
+
+
+function setdisabled() {
+  document.timeForm.tsvr1.disabled = document.timeForm.tsvr2.disabled =
+  document.timeForm.tzone.disabled = document.timeForm.time_service.disabled = ! document.timeForm.time_clt.checked;
+}
+
+function getidx() {
+  document.timeForm2.tzidx.value = document.timeForm1.tzidx.value = document.timeForm.tzidx.value;
+  document.timeForm.tzone.selectedIndex = document.timeForm.tzidx.value;
+//  for (i=0;i<document.timeForm.tzone.length;i++) document.timeForm.tzone.options[i].selected=false;
+//  document.timeForm.tzone.options[document.timeForm.tzidx.value].selected=true;
+}
+
+function setidx(i) {
+  document.timeForm2.tzidx.value = document.timeForm1.tzidx.value = document.timeForm.tzone.selectedIndex;
+  switch (i) {
+    case 1: document.timeForm1.submit(); break;
+    case 2: document.timeForm2.submit(); break;
+  }
+}
+
+
+//-->
+</script>
+</head>
+<body onload="initPage();">
+
+<form action="config.cgi" method="post" target="Main" name="timeForm">
+  <input type="hidden" name="lang" value="englis">
+  <input type="hidden" name="item" value="2">
+  <input type="hidden" name="act" value="1">
+  <table>
+  <tr>
+    <td colspan="2">
+      <input type="radio" name="timemode" value="ntp" onclick="chooseDiv(1);" checked>synchronise time
+      <input type="radio" name="timemode" value="man" onclick="chooseDiv(2);">set system time
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      the router's date and time when page request: {SYSTEMZEIT}
+    </td>
+  </tr>
+  <tr>
+    <td>Time zone</td>
+    <td><select name="tzone">
+      <option value="+12">-12:00   International Date Line West</option>
+      <option value="+11">-11:00   Samoa Standard Time</option>
+      <option value="+10">-10:00   Alaska-Hawaii Standard Time</option>
+      <option value="+9">-9:00   Alaska Hawaii Standard Time, Central Alaska Time, Hawaii Standard Time</option>
+      <option value="+8">-8:00   Pacific Standard Time, Pacific Time</option>
+      <option value="+7">-7:00   Mountain Standard Time</option>
+      <option value="+6">-6:00   Central Standard Time</option>
+      <option value="+5">-5:00   Eastern Standard Time</option>
+      <option value="+4">-4:00   Atlantic Standard Time, Western Brazilian Time, Paraguay Time</option>
+      <option value="+3:30">-3:30   Newfoundland Standard Time</option>
+      <option value="+3">-3:00   Eastern Brazilian Time</option>
+      <option value="+2">-2:00   Azores Time</option>
+      <option value="+1">-1:00   West African Time</option>
+      <option value="">0:00   Greenwich Mean Time</option>
+      <option value="-1">+1:00   Central European Time</option>
+      <option value="-2">+2:00   Eastern European Time, Central Africa Time, South Africa Standard Time</option>
+      <option value="-3">+3:00   Baghdad Time, East Africa Time, Moscow Time</option>
+      <option value="-3:30">+3:30   Iran Time</option>
+      <option value="-4">+4:00   Samara Time</option>
+      <option value="-4:30">+4:30   Afghanistan Time</option>
+      <option value="-5">+5:00   Pakistan Time, Tajikistan Time, Turkmenistan Time, Yekatarinburg Time</option>
+      <option value="-5:30">+5:30   Indian Standard Time</option>
+      <option value="-5:45">+5:45   Nepal Time</option>
+      <option value="-6">+6:00   Bangladesh Time, Lankan Time, Novosibirsk Time, Omsk Time</option>
+      <option value="-6:30">+6:30   Myanmar Time</option>
+      <option value="-7">+7:00   Indochina Time, Krasnoyarsk Time, West Australia Standard Time, West Indonesia Time</option>
+      <option value="-8">+8:00   Brunei Time, Central Indonesia Time, China Standard Time, Irkutsk Time, Ulan Bator Time</option>
+      <option value="-8:45">+8:45</option>
+      <option value="-9">+9:00   East Indonesia Time, Japan Standard Time, Korea Standard Time, Yakutsk Time</option>
+      <option value="-9:30">+9:30   Australian Central Standard Time</option>
+      <option value="-10">+10:00   Australian Eastern Standard Time, Guam Standard Time, Sakhalin Time, Vladivostok Time</option>
+      <option value="-10:30">+10:30   Lord Howe Island Standard Time</option>
+      <option value="-11">+11:00   Magadan Time</option>
+      <option value="-11:30">+11:30   Norfolk Island Time</option>
+      <option value="-12">+12:00   International Date Line East, New Zealand Standard Time, Petropavlovsk-Kamtchatski Time</option>
+      <option value="-12:45">+12:45   Chatham Island Standard Time</option>
+      <option value="-13">+13:00   Tonga Time</option>
+      <option value="-14">+14:00   Line Island Time</option>
+      </select>
+      <input type="hidden" name="tzidx" value="{IDX}">
+    </td>
+  </table>
+</form>
+
+
+<div id="1">
+<form action="config.cgi" method="post" target="Main" name="timeForm1">
+  <input type="hidden" name="lang" value="englis">
+  <input type="hidden" name="item" value="2">
+  <input type="hidden" name="act" value="1">
+  <input type="hidden" name="timemode" value="ntp">
+  <input type="hidden" name="tzidx" value="{IDX}">
+<fieldset><legend>Time server</legend>
+  <table>
+  <tr>
+    <td>Host</td>
+    <td><input type="text" size="20" maxlength="25" name="tsvr1" value="{TSVR}"></td>
+    <td>the time server's host name or IP address</td>
+  </tr>
+  <tr>
+    <td>Host</td>
+    <td><input type="text" size="20" maxlength="25" name="tsvr2" value="{TSVR2}"></td>
+    <td>the second time server's host name or IP address</td>
+  </tr>
+  <tr>
+    <td><input type="checkbox" name="time_service" value="yes" {CHECK_S}></td><td colspan="2">activate time server</td>
+  </tr>
+  </table>
+</fieldset>
+<table align="right">
+    <tr>
+      <td><input type="reset" name="Cancel_Button" value="Cancel"></td>
+      <td><input type="button" name="OK_Button" value="Apply" onclick="setidx(1);"></td>
+    </tr>
+</table>
+</form>
+</div>
+
+
+<div id="2">
+<form action="config.cgi" method="post" target="Main" name="timeForm2">
+  <input type="hidden" name="lang" value="englis">
+  <input type="hidden" name="item" value="2">
+  <input type="hidden" name="act" value="1">
+  <input type="hidden" name="timemode" value="man">
+  <input type="hidden" name="tzidx" value="{IDX}">
+<fieldset><legend>System time</legend>
+  <table>
+    <tr>
+      <td>Date (y/m/t)</td>
+      <td>
+        <input type="text" name="jahr" value="2009" size="6">
+      </td><td>
+        <select name="monat">
+          <option>01</option><option>02</option><option>03</option><option>04</option><option>05</option><option>06</option>
+          <option>07</option><option>08</option><option>09</option><option>10</option><option>11</option><option>12</option>
+        </select>
+      </td><td>
+        <select name="tag">
+          <option>01</option><option>02</option><option>03</option><option>04</option><option>05</option><option>06</option>
+          <option>07</option><option>08</option><option>09</option><option>10</option><option>11</option><option>12</option>
+          <option>13</option><option>14</option><option>15</option><option>16</option><option>17</option><option>18</option>
+          <option>19</option><option>20</option><option>21</option><option>22</option><option>23</option><option>24</option>
+          <option>25</option><option>26</option><option>27</option><option>28</option><option>29</option><option>30</option>
+          <option>31</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>Time (h/m/s)</td>
+      <td>
+        <select name="std">
+          <option>00</option><option>01</option><option>02</option><option>03</option><option>04</option><option>05</option>
+          <option>06</option><option>07</option><option>08</option><option>09</option><option>10</option><option>11</option>
+          <option>12</option><option>13</option><option>14</option><option>15</option><option>16</option><option>17</option>
+          <option>18</option><option>19</option><option>20</option><option>21</option><option>22</option><option>23</option>
+        </select>
+      </td><td>
+        <select name="min">
+          <option>00</option><option>01</option><option>02</option><option>03</option><option>04</option><option>05</option>
+          <option>06</option><option>07</option><option>08</option><option>09</option><option>10</option><option>11</option>
+          <option>12</option><option>13</option><option>14</option><option>15</option><option>16</option><option>17</option>
+          <option>18</option><option>19</option><option>20</option><option>21</option><option>22</option><option>23</option>
+          <option>24</option><option>25</option><option>26</option><option>27</option><option>28</option><option>29</option>
+          <option>30</option><option>31</option><option>32</option><option>33</option><option>34</option><option>35</option>
+          <option>36</option><option>37</option><option>38</option><option>39</option><option>40</option><option>41</option>
+          <option>42</option><option>43</option><option>44</option><option>45</option><option>46</option><option>47</option>
+          <option>48</option><option>49</option><option>50</option><option>51</option><option>52</option><option>53</option>
+          <option>54</option><option>55</option><option>56</option><option>57</option><option>58</option><option>59</option>
+        </select>
+      </td><td>
+        <select name="sek">
+          <option>00</option><option>01</option><option>02</option><option>03</option><option>04</option><option>05</option>
+          <option>06</option><option>07</option><option>08</option><option>09</option><option>10</option><option>11</option>
+          <option>12</option><option>13</option><option>14</option><option>15</option><option>16</option><option>17</option>
+          <option>18</option><option>19</option><option>20</option><option>21</option><option>22</option><option>23</option>
+          <option>24</option><option>25</option><option>26</option><option>27</option><option>28</option><option>29</option>
+          <option>30</option><option>31</option><option>32</option><option>33</option><option>34</option><option>35</option>
+          <option>36</option><option>37</option><option>38</option><option>39</option><option>40</option><option>41</option>
+          <option>42</option><option>43</option><option>44</option><option>45</option><option>46</option><option>47</option>
+          <option>48</option><option>49</option><option>50</option><option>51</option><option>52</option><option>53</option>
+          <option>54</option><option>55</option><option>56</option><option>57</option><option>58</option><option>59</option>
+        </select>
+      </td>
+    </tr>
+  </table>
+  </fieldset>
+<table align="right">
+    <tr>
+      <td><input type="reset" name="Cancel_Button" value="Cancel"></td>
+      <td><input type="button" name="OK_Button" value="Apply" onclick="setidx(2)"></td>
+    </tr>
+</table>
+</form>
+</div>
+
+<!--table>
+    <tr>
+      <td><input type="checkbox" name="opttime" value="yes"></td>
+      <td colspan="3">Systemzeit setzen</td>
+    </tr>
+  <tr>
+    <td><input type="checkbox" name="time_clt" value="yes" onclick="setdisabled();" {CHECK_C}></td><td colspan="2">Zeit abgleichen</td>
+  </tr>
+    <td>Offset in Stunden</td>
+  </tr>
+</table-->
+</body>
+</html>

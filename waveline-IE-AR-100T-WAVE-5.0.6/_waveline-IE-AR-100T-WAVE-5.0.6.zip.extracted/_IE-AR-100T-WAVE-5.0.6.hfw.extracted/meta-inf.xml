@@ -1,0 +1,17 @@
+<IE-AR-WAVE>
+	<version>
+		<name>5.0.6</name>
+		<configurator>1.6.0</configurator>
+		<plugin>1.0.0</plugin>
+		<reqfw>5.0.0</reqfw>
+	</version>
+	<devices>
+		<dev>IE-AR-100T-WAVE</dev>
+	</devices>
+	<file>
+		<name>IE-AR-100T-WAVE_firmware</name>
+		<size>9106938</size>
+		<target>IE-AR-100T-WAVE</target>
+		<description>Firmware</description>
+	</file>
+</IE-AR-WAVE>

@@ -1,0 +1,138 @@
+#!/bin/sh
+#
+# Start the lighttpd web server.
+#
+### END INIT INFO
+
+source /tmp/ulsp/system.config
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+DAEMON=/usr/sbin/lighttpd
+NAME=lighttpd
+PIDFILE=/var/run/$NAME.pid
+
+DAEMON_OPTS="-f /etc/lighttpd/lighttpd.conf"
+
+test -x $DAEMON || exit 0
+
+set -e
+
+firewallUp() {
+  iptables -A INPUT -p tcp --dport 80 -j ACCEPT    # http
+  iptables -A INPUT -p tcp --dport 443 -j ACCEPT   # https
+}
+
+firewallDown() {
+  iptables -D INPUT -p tcp --dport 80 -j ACCEPT    # http
+  iptables -D INPUT -p tcp --dport 443 -j ACCEPT   # https
+}
+
+configure () {
+    # make httpd own its own file
+    chown -R www-data:www-data /home/httpd
+	# add current system password to htpasswd
+	echo -n > /etc/lighttpd/htpasswd
+	echo "admin:${SYSTEM_USER_PASS}" >> /etc/lighttpd/htpasswd
+
+    # create the upload directory
+    mkdir -p /tmp/upload > /dev/null 2> /dev/null
+    chown admin:admin /tmp/upload
+    chmod 0770 /tmp/upload
+
+    # be sure there is a /var/run/lighttpd, even with tmpfs
+    mkdir -p /var/run/lighttpd > /dev/null 2> /dev/null
+    chown www-data:www-data /var/run/lighttpd
+    chmod 0750 /var/run/lighttpd
+	
+	echo -n > /etc/lighttpd/lighttpd.conf
+
+	cat << ENDE >> /etc/lighttpd/lighttpd.conf
+	server.modules              = ( 
+            "mod_access",
+            "mod_alias",
+            "mod_accesslog",
+            "mod_auth",
+            "mod_redirect",
+	)
+
+    \$HTTP["scheme"] == "http" {
+       \$HTTP["host"] =~ "(.*)" {
+          url.redirect = ( "^/(.*)" => "https://%1/\$1" )
+       }
+    }
+
+    \$SERVER["socket"] == ":443" {
+      ssl.engine = "enable"
+      ssl.pemfile = "/etc/lighttpd/wm.pem"
+	  ssl.ca-file = "/etc/lighttpd/wm.crt"
+
+      auth.debug                  = 0
+      auth.backend                = "htpasswd"
+      auth.backend.htpasswd.userfile = "/etc/lighttpd/htpasswd"
+      auth.require                = ("" =>
+                            (
+                              "method"  => "basic",
+                              "realm"   => "IE-AR-100T-WAVE",
+                              "require" => "user=admin"
+                            )
+      )
+    }
+
+    server.document-root       = "/home/httpd/"
+    #server.errorlog           = "/var/log/lighttpd/error.log"
+	server.errorlog-use-syslog = "enable"
+	index-file.names           = ( "index.html" )
+	#accesslog.filename        = "/var/log/lighttpd/access.log"
+	accesslog.use-syslog       = "enable"
+	#dir-listing.encoding      = "utf-8"
+	#server.dir-listing        = "enable"
+	server.username            = "www-data"
+	server.groupname           = "www-data"
+	server.pid-file           = "/var/run/lighttpd.pid"
+
+	mimetype.assign = (
+	".gif" => "image/gif",
+	".jpeg" => "image/jpeg",
+	".jpg" => "image/jpeg",
+	".png" => "image/png",
+	".css" => "text/css",
+	".js" => "text/javascript",
+	".html" => "text/html",
+	".shtml" => "text/html"
+	)
+
+	server.modules  += ( "mod_cgi" )
+
+	cgi.assign      = ( ".cgi" => "" )
+ENDE
+}
+
+case "$1" in
+    start)
+		echo -n "Starting webservice:"
+		configure
+        start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE --exec $DAEMON -- $DAEMON_OPTS
+        echo -n " $NAME"
+    	echo "."
+        firewallUp
+        ;;
+    stop)
+        firewallDown
+		echo -n "Stopping webservice:"
+        start-stop-daemon --quiet --stop --pidfile $PIDFILE --exec $DAEMON
+        echo -n " $NAME"
+    	echo "."
+        ;;
+    reload|restart|force-reload)
+		echo -n "Restarting webservices:"
+		$0 stop
+		sleep 1
+		$0 start
+        ;;
+    *)
+        echo "Usage: $NAME {start|stop|restart|reload|force-reload}" >&2
+        exit 1
+        ;;
+esac
+
+exit $?

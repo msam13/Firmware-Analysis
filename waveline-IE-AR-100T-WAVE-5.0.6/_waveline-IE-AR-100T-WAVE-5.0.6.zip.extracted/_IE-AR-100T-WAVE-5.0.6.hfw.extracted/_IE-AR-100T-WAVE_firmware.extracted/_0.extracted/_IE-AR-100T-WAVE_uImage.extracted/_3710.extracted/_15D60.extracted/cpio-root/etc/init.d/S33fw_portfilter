@@ -1,0 +1,79 @@
+#!/bin/sh
+#DEBUG='yes'
+
+# include configs
+CONFIG_DIR="/tmp/ulsp"
+
+source $CONFIG_DIR/portfilter.config
+
+valueOf() {
+	echo $(eval echo \$$1)
+}
+
+debug() {
+	if [ "$DEBUG" = "yes" ]
+	then
+		echo $1
+	fi	
+}
+
+clean() {
+	iptables -D FORWARD -p ALL -j portfilter
+
+	iptables -F portfilter
+
+	iptables -X portfilter
+}
+
+configure() {
+	debug "blocks communication to configured ports ..."
+	iptables -N portfilter
+	iptables -A FORWARD -p ALL -j portfilter
+	idx=1
+	while [ "$idx" -le "$PORTFILTER_N" ]
+	do
+		port=$(valueOf PORTFILTER_${idx}_PORT)
+		
+		# default action is reject, default protocol is ALL
+		action=$(echo $(valueOf PORTFILTER_${idx}_RULE) | cut -d"-" -f1 | tr '[:lower:]' '[:upper:]')
+		protocol=$(echo $(valueOf PORTFILTER_${idx}_RULE) | cut -d"-" -f2 | tr '[:lower:]' '[:upper:]')
+
+		# reject forwarding of ports
+        debug "FORWARD: $action from $port"
+		if [ $action = $protocol ]      # there is no protocol given, assume ALL
+		then
+			iptables -A portfilter -p tcp --dport $port -j $action
+			iptables -A portfilter -p udp --dport $port -j $action
+		else
+			iptables -A portfilter -p $protocol --dport $port -j $action
+		fi
+
+		idx=$(expr $idx + 1)
+	done
+}
+
+NAME=fw_portfilter
+DESC="iptables"
+SCRIPTNAME=/etc/init.d/S34$NAME
+
+case "$1" in
+    start)
+	  logger "Starting $DESC" $NAME
+	  configure
+      ;;
+    stop)
+	  logger "Stopping $DESC" $NAME
+	  clean
+      ;;
+    restart)
+	  logger "Reloading $DESC " $NAME
+	  clean
+	  configure
+      ;;
+    *)
+        echo "Usage: $SCRIPTNAME {start|stop|restart}" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

@@ -1,0 +1,97 @@
+#!/bin/sh
+#DEBUG='yes'
+
+# include configs
+CONFIG_DIR="/tmp/ulsp"
+
+source $CONFIG_DIR/blackwhite.config
+
+debug() {
+	if [ "$DEBUG" = "yes" ]
+	then
+		echo $1
+	fi	
+}
+
+clean() {
+	iptables -D FORWARD -p ALL -j white > /dev/null 2>&1
+	iptables -D FORWARD -p ALL -j black > /dev/null 2>&1
+
+	iptables -F white         > /dev/null 2>&1
+	iptables -F black         > /dev/null 2>&1
+
+	iptables -X white         > /dev/null 2>&1
+	iptables -X black         > /dev/null 2>&1
+}
+
+configure() {
+	# black/white lists - this must be the last in forward chain
+	# blocks hosts on the blacklist
+	# allows communication for hosts on the white list
+	iptables -N $BLWH_LIST_TYPE
+	iptables -A FORWARD -p ALL -j $BLWH_LIST_TYPE
+	# default: work as blacklist
+	host_action=REJECT
+	list_action=ACCEPT
+	if [ $BLWH_LIST_TYPE = "white" ]
+	then
+		# change it if we have a white list
+		host_action=ACCEPT
+		list_action=REJECT
+	fi 
+	debug "add hosts to $BLWH_LIST_TYPE list ..."
+	idx=1
+	while [ "$idx" -le "$BLWH_LIST_N" ]
+	do
+		src_host=$(eval echo \$$(echo BLWH_LIST_${idx}_HOST))
+		protocol=$(eval echo \$$(echo BLWH_LIST_${idx}_PROT))
+		tgt_port=$(eval echo \$$(echo BLWH_LIST_${idx}_PORT))
+		
+		# check if we should use special destination ports only
+		[ $tgt_port = "-" ] && PORT="" || PORT="--dport $tgt_port"
+
+		debug "${BLWH_LIST_TYPE}: $host_action $src_host -p $protocol $PORT"
+        if [ -z "$PORT" ]
+        then
+		  iptables -A $BLWH_LIST_TYPE -p $protocol -s $src_host -j $host_action
+        else
+		  if [ $protocol = "ALL" ]      # there is no protocol given, assume ALL
+		  then
+			iptables -A $BLWH_LIST_TYPE -p tcp -s $src_host $PORT -j $host_action
+			iptables -A $BLWH_LIST_TYPE -p udp -s $src_host $PORT -j $host_action
+		  else
+			iptables -A $BLWH_LIST_TYPE -p $protocol -s $src_host $PORT -j $host_action
+		  fi
+        fi
+
+		idx=$(expr $idx + 1)
+	done
+	# close list; allow/deny all depending on type at last
+	iptables -A $BLWH_LIST_TYPE -p ALL -j $list_action
+}
+
+NAME=fw_blwhlist
+DESC="iptables"
+SCRIPTNAME=/etc/init.d/S38$NAME
+
+case "$1" in
+    start)
+	  logger "Starting $DESC" $NAME
+	  configure
+      ;;
+    stop)
+	  logger "Stopping $DESC" $NAME
+	  clean
+      ;;
+    restart)
+	  logger "Reloading $DESC " $NAME
+	  clean
+	  configure
+      ;;
+    *)
+        echo "Usage: $SCRIPTNAME {start|stop|restart}" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

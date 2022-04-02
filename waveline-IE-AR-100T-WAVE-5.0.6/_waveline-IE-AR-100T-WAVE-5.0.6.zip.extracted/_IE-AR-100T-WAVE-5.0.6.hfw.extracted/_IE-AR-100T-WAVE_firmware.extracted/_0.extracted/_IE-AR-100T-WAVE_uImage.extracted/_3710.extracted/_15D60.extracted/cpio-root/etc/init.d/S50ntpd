@@ -1,0 +1,95 @@
+#! /bin/sh
+#
+# System-V init script for the openntp daemon
+#
+
+source /tmp/ulsp/time.config
+
+# at first fix date if possible
+if [ $NTP_ON_BOOT = "yes" ]
+then
+  # fixing time
+  echo -n "Try to get current time ... "
+  ntpdate -s -b $NTP_REMOTE_1_IP
+  echo $(date)
+else
+  echo "Skipping time change, using defaults!"
+fi
+
+# check if we should really run
+if [ $OPT_NTP = "no" ]
+then
+	echo "Skipping ntp service according to configuration!"
+	exit 0
+fi
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+DESC="network time protocol daemon"
+NAME=ntpd
+DAEMON=/usr/sbin/$NAME
+PIDFILE=/var/run/${NAME}.pid
+
+DAEMON_OPTS="-c /etc/ntpd/ntpd.conf -p /var/run/ntpd.pid"
+
+# Gracefully exit if the package has been removed.
+test -x $DAEMON || exit 0
+
+firewallUp() {
+  iptables -A INPUT -j ACCEPT -p tcp --dport 123
+  iptables -A INPUT -j ACCEPT -p udp --dport 123
+}
+
+firewallDown() {
+  iptables -A INPUT -j ACCEPT -p tcp --dport 123
+  iptables -D INPUT -j ACCEPT -p udp --dport 123
+}
+
+configure () {
+    mkdir -p /etc/ntpd
+
+    echo -n                                      > /etc/ntpd/ntpd.conf
+
+	idx=0
+	while [ $idx -lt $NTP_REMOTE_N ]
+	do
+		idx=$(expr $idx + 1)
+		ntp_remote_ip=$(eval echo '$'$(echo NTP_REMOTE_${idx}_IP))
+        echo "server $ntp_remote_ip"            >> /etc/ntpd/ntp.conf
+	done
+    echo "server 127.127.1.0"                   >> /etc/ntpd/ntpd.conf
+    echo "fudge 127.127.1.0 stratum 12"         >> /etc/ntpd/ntpd.conf
+    echo "driftfile /tmp/ntp.drift"             >> /etc/ntpd/ntpd.conf
+
+    # Create driftfile
+    touch /tmp/ntpd.drift
+	
+	# configure timezone
+	echo $NTP_TIME_INFO > /etc/TZ
+}
+
+case "$1" in
+  start)
+	echo -n "Starting $DESC: $NAME"
+	configure
+    firewallUp
+	start-stop-daemon -S -q -p $PIDFILE -x $DAEMON -- $DAEMON_OPTS
+	echo "."
+	;;
+  stop) 
+	echo -n "Stopping $DESC: $NAME"
+    firewallDown
+	start-stop-daemon -K -q -p $PIDFILE
+	echo "."
+	;;
+  restart|reload|force-reload) 
+	$0 stop
+	sleep 1
+	$0 start
+	;;
+  *) 
+	echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
+	exit 1
+	;;
+esac
+
+exit 0

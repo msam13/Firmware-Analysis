@@ -1,0 +1,93 @@
+std_msg: To activate your changes you have to save you Konfiguration and restart the device.
+
+blwhit_head:Black/White-Lists
+blwhit_rslt:Black/White-Lists successfully configured.
+
+cbasis_head:Basic Settings
+cbasis_rslt:The basic settings successfully changed.
+
+cccdns_head:DNS
+cccdns_rslt:DNS successfully configured.
+
+cccvmp_head:Virtual Mapping (DNAT)
+cccvmp_rslt:Virtual Mapping successfully configured.
+
+ccospf_head:OSPF Configuration
+ccospf_rslt:OSPF successfully configured.
+
+ccovpn_head:OpenVPN Configuration
+ccovpn_rslt:OpenVPN successfully configured.
+ccovpn_err1:Error while copying key.
+ccovpn_err2:An error occured.
+
+ccsnmp_head:SNMP Configuration
+ccsnmp_rslt:SNMP successfully configured.
+
+cctime_head:Time Settings
+cctime_rslt:Time successfully configured.
+
+cdebug_head:System Log
+cdebug_rslt:System Log successfully configured.
+
+cdhcps_head:DHCP Server
+cdhcps_rslt:DHCP Server successfully configured.
+
+cipsec_head:IPSec Configuration
+cipsec_rslt:IPSec successfully configured.
+
+cpppoe_head:PPPoE Configuration
+cpppoe_rslt:PPPoE successfully configured.
+
+crdial_head:Redundant Dialout Configuration
+crdial_rslt:Redundant Dialout successfully configured.
+
+dialin_head:DialIn Configuration
+dialin_not_configured:Please configure an external Modem first! Please note that there is no ability for dialin using a DSL modem.
+dialin_rslt:DialIn successfully configured.
+
+diaout_head:DialOut Configuration
+diaout_not_configured:Please configure an external Modem first!
+diaout_rslt:DialOut successfully configured.
+
+distat_head:DigitalInput (DI) Configuration
+distat_rslt:DigitalInput (DI) successfully configured.
+
+dyndns_head:Dynamic DNS Configuration (DynDNS)
+dyndns_rslt:DynDNS successfully configured.
+
+facdef_head:Factory Defaults
+facdef_rslt:Factory Defaults successfully loaded.
+
+fwruls_head:Additional Firewall Rules
+fwruls_rslt:Additional firwall rules successfully configured.
+
+modint_head:Basic Modem Settings
+modint_rslt:Modem successfully configured.
+
+portfi_head:Port Filter Configuration
+portfi_rslt:Port Filter successfully configured.
+
+portfw_head:Configure Port Forwarding
+portfw_rslt:Port Forwarding successfully configured.
+
+update_head:Firmware Update Configuration
+update_rslt:Firmware Update successfully configured.
+
+rstart_head:Rebooting Router
+rstart_rslt:This might take about a minute. Please reload then.
+
+speich_head:Save Configuration
+speich_rslt:Configuration successfully saved.
+
+statrt_head:Configuration of Static Routes
+statrt_rslt:Static routes successfully configured.
+
+netstat_head:Current Network State
+timstat_head:Current Time
+logstat_head:Current System Log
+
+mgcert_head:Certificate management
+mgcert_rslt:Certificates were changed.
+
+vpnca_head:Certificate generation
+vpnca_rslt:Certificate was generated.

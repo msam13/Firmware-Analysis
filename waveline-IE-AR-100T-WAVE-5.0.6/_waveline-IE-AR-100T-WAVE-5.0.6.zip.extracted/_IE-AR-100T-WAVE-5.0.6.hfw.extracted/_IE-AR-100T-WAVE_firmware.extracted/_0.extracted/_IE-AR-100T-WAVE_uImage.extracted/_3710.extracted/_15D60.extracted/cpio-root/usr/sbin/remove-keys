@@ -1,0 +1,12 @@
+#!/bin/sh
+
+KEY_DIR=/tmp/keys
+KEY_NAME=$1
+
+if [ "$KEY_NAME" = "" ]; then
+   echo "Error: missing keyname"
+   echo "Using: remove-keys <key-name>"
+   exit 1
+fi
+
+rm -rf ${KEY_DIR}/${KEY_NAME}/*

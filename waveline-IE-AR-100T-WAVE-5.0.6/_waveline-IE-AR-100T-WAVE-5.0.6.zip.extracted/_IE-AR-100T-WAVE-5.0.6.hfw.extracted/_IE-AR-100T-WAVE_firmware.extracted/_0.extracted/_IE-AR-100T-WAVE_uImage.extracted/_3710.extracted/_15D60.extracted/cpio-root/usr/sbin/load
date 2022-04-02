@@ -1,0 +1,213 @@
+#!/bin/sh
+
+KEY_DIR=/tmp/keys
+KEY_WEB_DIR=/home/httpd
+PWD=$(pwd)
+
+load_help () {
+  echo "Please define your target."
+  echo "Usage: 'load <target>' where target is one of:"
+  echo "             defaults  load factory default configuration"
+  echo "             config    load current configuration"
+  echo "             ssh       load current ssh user keys"
+  echo "             ipsec     load current IPSec peer secrets"
+  echo "             openvpn   load current OpenVPN keys"
+  echo "             hostkeys  load current host keys"
+  echo "             certs     load current host certificates"
+  echo ""
+}
+
+load_defaults () {
+  tar xzf /etc/ulsp_config.tgz -C /tmp
+
+  # make config writable for all in admin group
+  chown -Rh admin:admin /tmp/ulsp
+  chmod -R g+w /tmp/ulsp/
+
+  return 0
+}
+
+load_config () {
+  rv=1
+
+  if [ -e /mnt/config/ulsp_config.tgz ]; then
+    # load user config
+    mkdir -p /tmp/ulsp
+    tar xzf /mnt/config/ulsp_config.tgz -C /tmp/ulsp
+    rv=0
+  fi
+
+  # make admin owns its own files and config writable for all in admin group
+  chown -Rh admin:admin /tmp/ulsp
+  chmod -R g+w /tmp/ulsp/
+
+  return $rv
+}
+
+load_ipsec () {
+  [ -d /tmp/ulsp ] && source /tmp/ulsp/vpnca.config || return 1
+
+  if [ -d /mnt/keys/$1 ]; then
+    # create private peer certificate directory into the RAM-disk
+    mkdir -p ${KEY_DIR}/${1}
+
+    # look for keys on flash    # and copy to RAM-disk
+    [ -e /mnt/keys/$1/$X509_CA_CRT ] && cp -r /mnt/keys/$1 ${KEY_DIR}/
+
+    # make ${KEY_DIR}/${1} accessible for admin user
+    chown -R admin:admin ${KEY_DIR}/${1}
+
+    return 1
+  fi
+  return 0
+}
+
+load_openvpn () {
+  # no keys on flash
+  key_name=static.key
+  VPNPEER_CERT="vpnpeer.p12"
+
+  if [ -d /mnt/keys/$1 ]; then
+    # create key directory in RAM-disk
+    mkdir -p ${KEY_DIR}/${1}
+    mkdir -p ${KEY_WEB_DIR}/${1}
+
+    # fill in default key = Chris: Quatsch!!!
+    #[ -x /usr/sbin/openvpn ] && /usr/sbin/openvpn --genkey --secret ${KEY_DIR}/${1}/${key_name}
+
+    # look for keys on flash    # and copy to RAM-disk            # or save generated key
+    #[ -e /mnt/keys/$1/$key_name ] && cp -r /mnt/keys/$1 ${KEY_DIR}/ || cp -r ${KEY_DIR}/$1 /mnt/keys/
+
+    # look for keys on flash    # and copy to RAM-disk
+    [ -e /mnt/keys/$1/$key_name ] && cp -r /mnt/keys/$1 ${KEY_DIR}/
+
+    # copy to /home/httpd/$1 for web interface
+    # [ -d ${KEY_WEB_DIR} ] && cp -r ${KEY_DIR}/$1 ${KEY_WEB_DIR}/
+    [ -e /mnt/keys/$1/$key_name ] && cp -r /mnt/keys/$1 ${KEY_WEB_DIR}/
+
+    # copy peer certificate if exists
+    [ -e /mnt/keys/$1/$VPNPEER_CERT ] && cp -r /mnt/keys/$1/$VPNPEER_CERT ${KEY_DIR}/$1
+
+    # make /tmp/keys/$1 accessible for admin user
+    chown -R admin:admin ${KEY_DIR}/$1
+
+    # make /home/httpd/$1 accessible for www-data user
+    chown -R www-data:www-data ${KEY_WEB_DIR}/$1
+
+    return 0
+  fi
+  return 1
+}
+
+load_hostkey () {
+  # no keys on flash
+  rv=1
+
+  # create keydir
+  mkdir -p ${KEY_DIR}
+
+  # look for host key on flash
+  if [ -f /mnt/keys/hostkeys/${1}_host_key ]; then
+    # copy hostkey to RAM-disk
+    cp /mnt/keys/hostkeys/${1}_host_key ${KEY_DIR}/
+
+    # keys found on flash
+    rv=0
+  fi
+
+  return $rv
+}
+
+load_certificates () {
+  [ -d /tmp/ulsp ] && source /tmp/ulsp/vpnca.config || return 1
+
+  if [ -d /mnt/certs ]; then
+    # create certificate directory into the RAM-disk
+    mkdir -p ${CA_CRT_PATH}
+    # Look for any certificates on the flash and copy these into the RAM-disk.
+    cp -rf /mnt/certs/* ${CA_CRT_PATH}/
+  fi
+
+  # Restore '/tmp/certs/config'
+  if [ ! -d ${CA_CNF_PATH} ]; then
+    mkdir -p ${CA_CNF_PATH}
+    cp -rf /mnt/certs/config/* ${CA_CNF_PATH}
+  fi
+
+  # make /tmp/certs/ accessible for admin user
+  chown -R admin:admin ${CA_CRT_PATH}
+
+  return 0
+}
+
+if [ -z $1 ]; then
+  load_help
+  exit 1
+fi
+
+mount /dev/mtdblock0 -tjffs2 /mnt
+if [ $? -ne 0 ]; then
+  echo "Could not mount ConfigFS!"
+  exit 1
+fi
+
+case $1 in
+  config)
+    echo -n "Loading user configuration from flash ... "
+    load_config
+  ;;
+  defaults)
+    echo -n "Loading factory default configuration ... "
+    load_defaults
+  ;;
+  ipsec)
+    echo -n "Restoring IPSec peer secrets ... "
+    load_ipsec ipsec
+
+    if [ $? -eq 0 ]; then
+      echo "done"
+    else
+      echo "not found"
+    fi
+  ;;
+  openvpn)
+    echo -n "Restoring OpenVPN secrets ... "
+    load_openvpn openvpn
+
+    if [ $? -eq 0 ]; then
+      echo "done"
+    else
+      echo "not found"
+    fi
+  ;;
+  hostkeys)
+    echo -n "Loading dss host key from flash ... "
+    load_hostkey dss
+
+    if [ $? -eq 0 ]; then
+      echo "done"
+    else
+      echo "not found"
+    fi
+
+    echo -n "Loading rsa host key from flash ... "
+    load_hostkey rsa
+  ;;
+  certs)
+    echo -n "Loading certificates from flash ... "
+    load_certificates
+  ;;
+  *)
+    echo -n "Loading $1 keys from flash ... "
+    load_keys $1
+  ;;
+esac
+
+if [ $? -eq 0 ]; then
+  echo "done"
+else
+  echo "not found"
+fi
+
+umount /mnt
+

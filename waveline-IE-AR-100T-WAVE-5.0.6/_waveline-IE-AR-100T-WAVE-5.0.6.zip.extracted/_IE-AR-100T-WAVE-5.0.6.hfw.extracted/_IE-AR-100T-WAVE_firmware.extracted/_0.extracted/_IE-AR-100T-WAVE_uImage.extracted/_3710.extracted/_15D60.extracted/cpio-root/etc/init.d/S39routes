@@ -1,0 +1,68 @@
+#!/bin/sh
+#
+# Start the network....
+#
+
+# load config 
+source /tmp/ulsp/static.config
+
+kernel_name=$(uname -r)
+
+start() {
+	if [ $DEFAULT_GW_ITF = 'eth' ]
+	then
+        echo "Setting default route ..."
+		ip route add default via $DEFAULT_GW_IP
+	fi
+
+    echo "Adding static routes ..."
+	ixp=0
+	while [ $ixp -lt $STATIC_ROUTE_N ]
+	do
+		ixp=$(expr $ixp + 1)
+		static_route_ip=$(eval echo \$$(echo STATIC_ROUTE_${ixp}_TARGET))
+		static_route_gw=$(eval echo \$$(echo STATIC_ROUTE_${ixp}_GWAY))
+
+		echo "Add route to $static_route_ip via $static_route_gw"
+
+		ip route add $static_route_ip via $static_route_gw
+	done
+
+	# may be we can add virtual mapping later on here
+}	
+
+stop() {
+    # grep default route, get interface and remove digits
+    default_route_interface=$(ip route show | grep default | cut -d" " -f5 | tr -d [:digit:])
+	if [ $default_route_interface = "eth" ]
+	then
+        echo "Removing default route ..."
+		ip route del default
+	fi
+
+	echo -n "Removing static routes ..."
+	ip route flush dev eth0
+	ip route flush dev eth1
+}
+
+restart() {
+	stop
+	start
+}	
+
+case "$1" in
+  start)
+  	start
+	;;
+  stop)
+  	stop
+	;;
+  restart|reload)
+  	restart
+	;;
+  *)
+	echo $"Usage: $0 {start|stop|restart}"
+	exit 1
+esac
+
+exit $?

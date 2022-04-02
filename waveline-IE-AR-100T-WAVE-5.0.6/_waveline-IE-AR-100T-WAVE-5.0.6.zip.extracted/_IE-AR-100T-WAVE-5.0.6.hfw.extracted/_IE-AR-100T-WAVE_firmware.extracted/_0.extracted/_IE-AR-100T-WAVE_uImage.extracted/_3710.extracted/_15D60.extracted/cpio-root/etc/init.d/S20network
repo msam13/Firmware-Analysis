@@ -1,0 +1,114 @@
+#!/bin/sh
+#
+# Start the network....
+#
+
+# load config 
+source /tmp/ulsp/network.config
+
+kernel_name=$(uname -r)
+
+configure () {
+    # check if modules are already loaded
+	if [ -z $(lsmod | cut -d" " -f1 | grep ^ixp400$) ]
+	then
+		# load IXP library kernel module for /dev/ixNpe device
+		insmod /lib/modules/${kernel_name}/kernel/drivers/net/ixp400.ko
+		
+		# load firmware into kernel
+		cat /usr/lib/hotplug/firmware/IxNpeMicrocode.dat > /dev/ixNpe
+   	    
+		# now load device driver (creating two interfaces)
+		insmod /lib/modules/${kernel_name}/kernel/drivers/net/ixp400_eth.ko
+		insmod /lib/modules/${kernel_name}/kernel/drivers/net/ixp400_codelets_dmaAcc.ko
+
+	    # load crypto modules now
+		modprobe ocf
+	    modprobe cryptodev
+	    modprobe ixp4xx
+		#modprobe cryptosoft
+	fi
+
+	# enable ip forwarding 
+	echo 1 > /proc/sys/net/ipv4/ip_forward	
+
+	# set current hostname
+	echo $HOSTNAME > /etc/hostname
+	/bin/hostname -F /etc/hostname
+
+	# prepare /etc/resolv.conf
+	echo -n > /etc/resolv.conf
+	if [ $DOMAIN_NAME ]
+	then
+		echo "domain $DOMAIN_NAME"		>> /etc/resolv.conf
+	fi
+
+	#echo "search intern"			    >> /etc/resolv.conf 
+}
+
+start() {
+	echo "Configuring network ..."
+	configure
+    
+ 	echo "Starting network..."
+
+	ip link set dev eth0 up
+	if [ "$IP_ETH0_TYPE" = "dhcp" ]
+	then
+		echo "Using DHCP to obtain address for eth0..."
+		/sbin/udhcpc -b -t 10 -i eth0 -h $HOSTNAME -S -p /var/run/udhcpc.pid
+	else
+		echo "Using static address $IP_ETH0_IPADDR for eth0 ..."
+		ip addr add $IP_ETH0_IPADDR dev eth0 broadcast +
+	fi 
+
+    ip link set dev eth1 up
+	if [ "$IP_ETH1_TYPE" = "dhcp" ]
+	then
+		echo "Using DHCP to obtain address for eth1..."
+		/sbin/udhcpc -b -t 10 -i eth1 -h $HOSTNAME -S -p /var/run/udhcpc.pid
+	else
+		echo "Using static address $IP_ETH1_IPADDR for eth1 ..."
+		ip addr add $IP_ETH1_IPADDR dev eth1 broadcast +
+	fi
+	
+	# getting up vlan interfaces 
+	/sbin/modprobe 8021q
+}	
+
+stop() {
+	echo -n "Stopping network..."
+
+	if [ -f /var/run/udhcpc.pid ]
+	then
+		kill $(cat /var/run/udhcpc.pid)
+	fi
+
+	ip addr flush dev eth1
+	ip addr flush dev eth0
+
+	ip link set dev eth1 down
+	ip link set dev eth0 down
+}
+
+restart() {
+	stop
+	start
+}	
+
+case "$1" in
+  start)
+  	start
+	;;
+  stop)
+  	stop
+	;;
+  restart|reload)
+  	restart
+	;;
+  *)
+	echo $"Usage: $0 {start|stop|restart}"
+	exit 1
+esac
+
+exit $?

@@ -1,0 +1,61 @@
+# Enable the OSPF from Quagga Routing Suite
+# values: 'yes', 'no'
+OPT_OSPF='no'
+
+# Router name
+# value: string, 0 to 127 characters
+OSPF_HOSTNAME=''
+
+# OSPF authentication key
+# value: string, 0 to 127 characters
+OSPF_AUTH_KEY='detmold'
+
+# RFC1583 compatibility
+# values: 'yes', 'no'
+OSPF_RFC1583='yes'
+
+# OSPF telnet password
+# value: string, 0 to 127 characters
+OSPF_TELNET_PASSWORD=''
+
+# Enable propagation of static routes
+# values: 'yes', 'no'
+OSPF_PROPAGATE_STATIC='no'
+
+# Priority for area 1
+# value: integer (1-255)
+OSPF_PRIO_AREA1='1'
+
+# Interface configuration
+
+# Enable interface eth0 for OSPF
+# value: 'yes', 'no'
+OSPF_ACTIVATE_ETH0='yes'
+
+# Enable interface eth1 for OSPF
+# value: 'yes', 'no'
+OSPF_ACTIVATE_ETH1='yes'
+
+# Hello intervall for eth0
+# value: integer (1-65535)
+OSPF_HELLO_ETH0='10'
+
+# Hello intervall for eth1
+# value: integer (1-65535)
+OSPF_HELLO_ETH1='10'
+
+# Dead intervall for eth0
+# value: integer (1-65535), should be 4 x OSPF_ETH_0_HELLO
+OSPF_DEAD_ETH0='40'
+
+# Dead intervall for eth1
+# value: integer (1-65535), should be 4 x OSPF_ETH_0_HELLO
+OSPF_DEAD_ETH1='40'
+
+# Network type for eth0
+# value: string, (broadcast, non-broadcast, point-to-multipoint, point-to-point)
+OSPF_NET_ETH0='broadcast'
+
+# Network type for eth1
+# value: string, (broadcast, non-broadcast, point-to-multipoint, point-to-point)
+OSPF_NET_ETH1='broadcast'

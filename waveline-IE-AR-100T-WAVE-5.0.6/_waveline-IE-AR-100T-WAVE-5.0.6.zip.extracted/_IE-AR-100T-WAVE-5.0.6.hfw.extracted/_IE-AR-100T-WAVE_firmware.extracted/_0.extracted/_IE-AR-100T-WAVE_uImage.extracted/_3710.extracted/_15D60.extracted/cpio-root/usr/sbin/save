@@ -1,0 +1,159 @@
+#!/bin/sh
+
+source /tmp/ulsp/vpnca.config
+
+KEY_DIR=/tmp/keys
+KEY_WEB_DIR=/home/httpd
+PWD=$(pwd)
+
+save_help () {
+   echo "Please define your target."
+   echo "Usage: 'save <target>' where target is one of:"
+   echo "              config    save current configuration"
+   echo "              ssh       save current ssh user keys"
+   echo "              ipsec     save current ipsec peer secrets"
+   echo "              openvpn   save current openvpn keys"
+   echo "              hostkeys  save current host keys"
+   echo "              certs     save current certificates"
+   echo ""
+}
+
+save_config () {
+   # make sure that a config folder exist on /mnt
+   mkdir -p /mnt/config
+   # and now put it to the flash
+   cd /tmp/ulsp
+   tar czf /mnt/config/ulsp_config.tgz config
+   cd ${PWD}
+
+   return 0
+}
+
+save_hostkey () {
+   rv=1
+
+   mkdir -p /mnt/keys/hostkeys
+
+   if [ -f ${KEY_DIR}/$1_host_key ]; then
+      cp ${KEY_DIR}/$1_host_key /mnt/keys/hostkeys
+      rv=0
+   fi
+
+   return $rv
+}
+
+save_keys () {
+   # ignore command if anyone removed the folder
+   [ ! -d ${KEY_DIR}/$1 ] && return 1
+
+   # save keys generated or uploaded in web interface
+   [ -d ${KEY_WEB_DIR}/$1 ] && cp -r ${KEY_WEB_DIR}/$1 ${KEY_DIR}/
+
+   # make /tmp/keys/$1 accessible for admin user
+   chown -R admin:admin ${KEY_DIR}/$1
+
+   # save keys to flash
+   cp -r ${KEY_DIR}/$1 /mnt/keys/
+
+   return 0
+}
+
+save_certificates () {
+  # ignore command if anyone removed the folder
+  [ ! -d ${CA_CRT_PATH} ] && return 1
+
+  # make /tmp/certs/$1 accessible for admin user
+  chown -R admin:admin ${CA_CRT_PATH}
+
+  # clean up the existing cert folder on /mnt
+  #[ -d /mnt/certs ] && rm -R /mnt/certs
+
+  # make sure that a cert folder exist on /mnt
+  #mkdir -p /mnt/certs
+
+  # save certificates to flash
+  #cp -rf ${CA_CRT_PATH}/* /mnt/certs/
+  [ -f ${CA_CRT_PATH}/${X509_CA_CDB} ] && cp -f ${CA_CRT_PATH}/${X509_CA_SER} /mnt/certs/${X509_CA_SER}
+  [ -f ${CA_CRT_PATH}/${X509_CA_CDB} ] && cp -f ${CA_CRT_PATH}/${X509_CA_CDB} /mnt/certs/${X509_CA_CDB}
+  [ -f ${CA_CRT_PATH}/${X509_CA_DBA} ] && cp -f ${CA_CRT_PATH}/${X509_CA_DBA} /mnt/certs/${X509_CA_DBA}
+  [ -f ${CA_CRT_PATH}/${X509_CA_CRL} ] && cp -f ${CA_CRT_PATH}/${X509_CA_CRL} /mnt/certs/${X509_CA_CRL}
+  [ -f ${CA_CRT_PATH}/${X509_CA_KEY} ] && cp -f ${CA_CRT_PATH}/${X509_CA_KEY} /mnt/certs/${X509_CA_KEY}
+  [ -f ${CA_CRT_PATH}/${X509_CA_CRT} ] && cp -f ${CA_CRT_PATH}/${X509_CA_CRT} /mnt/certs/${X509_CA_CRT}
+  [ -f ${CA_CRT_PATH}/${X509_GW_KEY} ] && cp -f ${CA_CRT_PATH}/${X509_GW_KEY} /mnt/certs/${X509_GW_KEY}
+  [ -f ${CA_CRT_PATH}/${X509_GW_PKY} ] && cp -f ${CA_CRT_PATH}/${X509_GW_PKY} /mnt/certs/${X509_GW_PKY}
+  [ -f ${CA_CRT_PATH}/${X509_GW_CRT} ] && cp -f ${CA_CRT_PATH}/${X509_GW_CRT} /mnt/certs/${X509_GW_CRT}
+  [ -f ${CA_CRT_PATH}/${X509_GW_DHP} ] && cp -f ${CA_CRT_PATH}/${X509_GW_DHP} /mnt/certs/${X509_GW_DHP}
+
+  # save last CA configuration to flash
+  [ ! -d /mnt/certs/config ] && mkdir -p /mnt/certs/config
+  [ -d ${CA_CNF_PATH} ] && cp -rf ${CA_CNF_PATH}/*  /mnt/certs/config/
+
+  return 0
+}
+
+if [ -z $1 ]; then
+   save_help
+   exit 1
+fi
+
+mount /dev/mtdblock0 -tjffs2 /mnt
+if [ $? -ne 0 ]; then
+   echo "Could not mount ConfigFS!"
+   exit 1
+fi
+
+case $1 in
+   config)
+      echo -n "Saving current configuration to flash ... "
+      save_config
+   ;;
+   ipsec)
+      echo -n "Saving IPSec peer secrets to flash ... "
+      save_keys ipsec
+
+      if [ $? -eq 0 ]; then
+         echo "done"
+      else
+         echo "not found"
+      fi
+   ;;
+   openvpn)
+      echo -n "Saving OpenVPN secrets to flash ... "
+      save_keys openvpn
+
+      if [ $? -eq 0 ]; then
+         echo "done"
+      else
+         echo "not found"
+      fi
+   ;;
+   hostkeys)
+      echo -n "Saving dss host key to flash ... "
+      save_hostkey dss
+
+      if [ $? -eq 0 ]; then
+         echo "done"
+      else
+         echo "not found"
+      fi
+
+      echo -n "Saving rsa host key to flash ... "
+      save_hostkey rsa
+   ;;
+   certs)
+      echo -n "Saving all certificates to flash ... "
+      save_certificates
+   ;;
+   *)
+      echo -n "Saving $1 keys to flash ... "
+      save_keys $1
+   ;;
+esac
+
+if [ $? -eq 0 ]; then
+   echo "done"
+else
+   echo "not found"
+fi
+
+umount /mnt

@@ -1,0 +1,46 @@
+# Redundant Dialout Config
+
+# redundant dialout type
+# values: 'none', 'simple', 'peer', 'target'
+REDUNT_TYP='none'
+
+# 'simple' redundant dialout parameters
+# the following is only needed if type is 'simple' or 'peer'
+REDUNT_IFACE='eth0'
+REDUNT_IP=''
+REDUNT_PORT='18180'
+
+# token that must be exchanged with the dialout router
+# values: any valid string
+REDUNT_PASS='detmold'
+
+# activate parallel redundant functionality
+# values: 'none', 'recessive', 'dominant'
+REDUNT_PARA='none'
+
+# 'peer' redundant dialout parameters
+# the following is only needed if type is 'peer'
+REDUNT_REMOTE_CONTROL='192.168.1.1'
+REDUNT_REMOTE_INT='5'
+REDUNT_REMOTE_MAX='2'
+
+# 'target' / 'peer' redundant dialout parameters
+# the following is only needed if type is 'peer' or 'target'
+REDUNT_EX_PORT='18181'
+
+# Enable dialout on this router
+# values: 'yes', 'no'
+RDIAL_OPT='no'
+
+# Port the dialout-daemon waits on
+# values: any valid port number
+RDIAL_PORT='18180'
+
+# Pass the dialout daemon check inside requests
+# values: any valid string
+RDIAL_PASS='detmold'
+
+# List of IP's that might request dialout
+# values: any valid ip
+RDIAL_CLIENT_N='0'
+#RDIAL_CLIENT_x_IP

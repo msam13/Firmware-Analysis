@@ -1,0 +1,23 @@
+# Log level (priority).
+# value: String, one of
+# Emerg     system is unusable
+# Alert     action must be taken immediately
+# Critical  critical conditions
+# Error     error conditions
+# Warning   warning conditions
+# Notice    normal but significant condition
+# Info      informational
+# Debug     debug-level messages
+SYSLOGD_LOG_LEVEL='Warning'
+
+# Enable remote logging
+# value: 'yes', 'no'
+SYSLOGD_REMOTE_LOG='no'
+
+# Message receiver.
+# value: every legal ip address
+SYSLOGD_REMOTE_HOST=''
+
+# Message receiver port.
+# value: every legal UDP port
+SYSLOGD_REMOTE_PORT='514'

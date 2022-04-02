@@ -1,0 +1,70 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta name="author" content="Henry Jesuiter, Enrico Kalliwoda">
+<meta name="description" content="English toc-page of the IAR / Heyfra GmbH">
+<meta name="date" content="2005-06-10 11:00:00">
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="cache-control" content="no-store">
+<meta http-equiv="expires" content="0">
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<title>Dynamic-DNS-Konfiguration </title>
+<link rel="stylesheet" type="text/css" href="css/stile.css" media="screen">
+<script type="text/javascript">
+<!--
+  function checkValues() {
+    document.dyndnsForm.submit();
+  }
+
+  function checkState() {
+    if(document.dyndnsForm.DDNS_Provider.options[0].selected == true) {
+      document.dyndnsForm.DDNS_User.disabled=true;
+      document.dyndnsForm.DDNS_Pass.disabled=true;
+      document.dyndnsForm.DDNS_Host.disabled=true;
+    } else {
+      document.dyndnsForm.DDNS_User.disabled=false;
+      document.dyndnsForm.DDNS_Pass.disabled=false;
+      document.dyndnsForm.DDNS_Host.disabled=false;
+    }
+  }
+//-->
+</script>
+</head>
+<body>
+<form action="config.cgi" method="post" target="Main" name="dyndnsForm">
+<input type="hidden" name="lang" value="deutsc">
+<input type="hidden" name="item" value="10">
+<input type="hidden" name="act" value="1">
+<fieldset><legend>Dynamic-DNS-Konfiguration</legend>
+<table>
+<tr>
+  <td>Provider</a></td>
+  <td><select name="DDNS_Provider" size="1" onchange="checkState()">{PROVIDER_LIST}
+  </select></td>
+</tr>
+<tr>
+  <td width="130px">Nutzername</td>
+  <td><input type="text" size="10" maxlength="15" name="DDNS_User" value="{USER}" {ENABLED}></td>
+  <td>Nutzername zum einloggen bei Ihrem DynDNS Provider</td>
+</tr>
+<tr>
+  <td>Passwort</td>
+  <td><input type="password" size="10" maxlength="15" name="DDNS_Pass" value="" {ENABLED}></td>
+  <td>Passwort um sich bei Ihrem DynDNS Provider einzuloggen</td>
+</tr>
+<tr>
+  <td>Hostname</td>
+  <td><input type="text" size="20" maxlength="35" name="DDNS_Host" value="{HOST}" {ENABLED}></td>
+  <td>vollst&auml;ndiger Hostname (Host+Domain), der bei Ihrem DynDNS-Provider f&uuml;r den Router registriert ist</td>
+</tr>
+</table>
+</fieldset>
+<table align="right">
+<tr>
+  <td><input type="reset" name="Cancel_Button" value="Abbrechen"></td>
+  <td><input type="button" name="OK_Button" value="&Uuml;bernehmen" onclick="checkValues()"></td>
+</tr>
+</table>
+</form>
+</body>
+</html>

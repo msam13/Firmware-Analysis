@@ -1,0 +1,453 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta name="author" content="W.-R. Juergens">
+<meta name="date" content="2006-06-30 11:00:00">
+<meta http-equiv="expires" content="0">
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<meta http-equiv="cache-control" content="no-store">
+<meta http-equiv="pragma" content="no-cache">
+<title>IPSec/L2TP Konfiguration</title>
+<link rel="stylesheet" type="text/css" href="css/stile.css" media="screen">
+<style type="text/css">
+<!--
+.outerdiv  { font-size:12px; position:absolute; top:40px; left:0px; height:auto; width:100%; visibility:hidden; }
+.innerdiv  { font-size:12px; position:absolute; top:310px; left:0px; height:auto; width:100%; visibility:hidden; }
+.navicell  { width:95px; border: solid black 1px; }
+.underline  { border-bottom: solid black 1px; border-right: none; border-left: none; border-top: none; }
+-->
+</style>
+<script src="deutsc/auxfunc.js" type="text/javascript"></script>
+<script type="text/javascript">
+<!--
+
+function chooseDiv(number) {
+  for (i = 1;i < 4; ++i) {
+if (i!=2)    document.getElementById(String(i)).style.visibility = (number==i ? "visible" : "hidden");
+  }
+  if (number==3) {
+    chooseInnerDiv(21);
+    checkovpnFormGwayCertState();
+  } else {
+    document.getElementById("22").style.visibility = "hidden";
+    document.getElementById("21").style.visibility = "hidden";
+  }
+}
+
+function chooseInnerDiv(number) {
+  switch (number) {
+  case 21 :
+    document.getElementById("22").style.visibility = "hidden";
+    document.getElementById("21").style.visibility = "visible";
+    document.getElementById("td2").style.borderBottomStyle = "solid";
+    document.getElementById("td1").style.borderBottomStyle = "none";
+    checkL2tpState();
+    break;
+  case 22 :
+    document.getElementById("21").style.visibility = "hidden";
+    document.getElementById("22").style.visibility = "visible";
+    document.getElementById("td1").style.borderBottomStyle = "solid";
+    document.getElementById("td2").style.borderBottomStyle = "none";
+    checkL2tpState();
+    break;
+  }
+}
+
+function checkovpnFormPeerCertState() {
+/*  document.ovpnFormPeer.certfile.disabled = document.ovpnFormPeer.x509pwd.disabled =
+      !document.ovpnFormPeer.ipsec_x509.checked;
+  document.ovpnFormPeer.ipskey.disabled = document.ovpnFormPeer.ipsec_x509.checked;
+*/}
+
+
+function checkGatewayState() {
+  document.ovpnFormGway.startaddress.disabled = document.ovpnFormGway.endaddress.disabled =
+  document.ovpnFormGway.netmask.disabled = document.ovpnFormGway.dns.disabled =
+  document.ovpnFormGway.wins.disabled = ! document.ovpnFormGway.ipsecgateway.checked;
+}
+
+
+function checkL2tpState() {
+  document.ovpnFormGway.rwpppaddr.disabled = document.ovpnFormGway.rwpppfrom.disabled =
+  document.ovpnFormGway.rwpppto.disabled = document.ovpnFormGway.rwpppmsdns.disabled =
+  document.ovpnFormGway.rwpppmswins.disabled = document.ovpnFormGway.chap_user.disabled =
+  document.ovpnFormGway.l2tp_pass.disabled = document.ovpnFormGway.l2tp_pass_re.disabled =
+    ! document.ovpnFormGway.l2tp_service.checked;
+}
+
+
+function checkovpnFormGwayCertState() {
+  document.ovpnFormGway.rtarget.disabled = document.ovpnFormGway.ipskey.disabled =
+  document.ovpnFormGway.Add_Button.disabled = document.ovpnFormGway.Del_Button.disabled =
+  document.ovpnFormGway.peer_list.disabled = document.ovpnFormGway.key_list.disabled =
+  document.ovpnFormGway.ipsec_x509.checked;
+
+  document.getElementById("tr1").style.visibility = document.getElementById("tr2").style.visibility =
+  document.getElementById("tab1").style.visibility = document.ovpnFormGway.ipsec_x509.checked ? "hidden" : "visible";
+
+  if (document.ovpnFormGway.ipsec_x509.checked) {
+    document.ovpnFormGway.ipsecgateway.checked = false;
+    checkGatewayState();
+  }
+  document.ovpnFormGway.ipsecgateway.disabled = document.ovpnFormGway.ipsec_x509.checked;
+}
+
+
+function initPage(){
+  chooseDiv({CHOOSEN_DIV});
+  checkovpnFormPeerCertState();
+  checkGatewayState();
+  checkL2tpState();
+  checkovpnFormGwayCertState();
+}
+
+
+function checkValues(division) {
+  switch (division) {
+    case 2:
+      document.ovpnFormPeer.submit();
+      break;
+    case 3:
+      document.ovpnFormGway.submit();
+      break;
+  }
+}
+
+
+function addEntry() {
+  var peer=document.ovpnFormGway.rtarget.value;
+  var secret=document.ovpnFormGway.ipskey.value;
+ 
+  if(peer.length == 0) {
+    alert("Bitte geben Sie einen Verbindungspartner an!");
+    document.ovpnFormGway.rtarget.focus();
+    return;
+  } 
+
+  if(secret.length == 0) {
+    alert("Bitte geben Sie einen gueltigen Schluessel an!");
+    document.ovpnFormGway.ipskey.focus();
+    return;
+  } 
+
+  var entry=new Option(peer, peer, false, false);
+  var key=new Option(secret, secret, false, false);
+  document.ovpnFormGway.peer_list.options[document.ovpnFormGway.peer_list.length] = entry;
+  document.ovpnFormGway.peerlist.value=document.ovpnFormGway.peerlist.value + peer + " ";
+  document.ovpnFormGway.key_list.options[document.ovpnFormGway.key_list.length] = key;
+  document.ovpnFormGway.keylist.value = document.ovpnFormGway.keylist.value + secret + " ";
+}
+
+
+function delEntry() {
+  if(document.ovpnFormGway.peer_list.selectedIndex != -1) {
+    var index = document.ovpnFormGway.peer_list.selectedIndex;
+    var peers = document.ovpnFormGway.peerlist.value;
+    var keys = document.ovpnFormGway.keylist.value;
+    var peerArray = peers.split(" ");
+    var keyArray = keys.split(" ");
+    var newpeers = "";
+    var newkeys = "";
+
+    for(i=0; i<document.ovpnFormGway.peer_list.length; ++i) {
+      if(i!=index) {
+        newpeers = newpeers + peerArray[i] + " ";
+        newkeys = newkeys + keyArray[i] + " ";
+      }
+    }
+    document.ovpnFormGway.peer_list.options[index] = null;
+    document.ovpnFormGway.peerlist.value = newpeers;
+    document.ovpnFormGway.key_list.options[index] = null;
+    document.ovpnFormGway.keylist.value = newkeys;
+  } else {
+    alert("Bitte waehlen Sie einen zu loeschenden Eintrag!");
+  }
+}
+
+
+function choose(idx) {
+  for(i=0;i<document.ovpnFormGway.peer_list.length;++i) {
+     document.ovpnFormGway.peer_list.options[i].selected=false;
+     document.ovpnFormGway.key_list.options[i].selected=false;
+  }
+  document.ovpnFormGway.peer_list.options[idx].selected=true;
+  document.ovpnFormGway.key_list.options[idx].selected=true;
+}
+
+
+//-->
+</script>
+</head>
+<body onLoad="initPage();">
+
+<form action="config.cgi" method="post" target="Main" name="ipsForm">
+  <input type="hidden" name="lang" value="deutsc">
+  <input type="hidden" name="item" value="29">
+  <input type="hidden" name="act" value="1">
+  <table>
+  <tr>
+    <td>
+      <input type="radio" name="ipsmode" value="none" onclick="chooseDiv(1);" {MODE_CHK1}>kein IPSec
+      <!--input type="radio" name="ipsmode" value="peer" onclick="chooseDiv(2);" {MODE_CHK2}>IPSec-Peer-->
+      <input type="radio" name="ipsmode" value="gateway" onclick="chooseDiv(3);" {MODE_CHK3}>IPSec-Gateway
+    </td>
+  </tr>
+  </table>
+</form>
+
+<!-- ******************************************************************************************** -->
+
+<div id="1" class="outerdiv">
+<form action="config.cgi" method="post" target="Main" name="ovpnFormNone">
+  <input type="hidden" name="lang" value="deutsc">
+  <input type="hidden" name="item" value="29">
+  <input type="hidden" name="act" value="1">
+  <input type="hidden" name="ipsmode" value="none">
+  <fieldset><legend>kein IPSec</legend>
+  <p>IPSec ist deaktiviert.</p>
+  </fieldset>
+  <table align="right">
+  <tr>
+    <td> <input type="reset" name="Cancel_Button" value="Abbrechen"> </td>
+    <td> <input type="submit" name="OK_Button" value="IPSec-Konfiguration &uuml;bernehmen"> </td>
+  </tr>
+  </table>
+</form>
+</div>
+
+<!-- ******************************************************************************************** -->
+
+<!--div id="2" class="outerdiv">
+<form action="config.cgi" method="post" target="Main" name="ovpnFormPeer" enctype="multipart/form-data">
+  <input type="hidden" name="lang" value="deutsc">
+  <input type="hidden" name="item" value="29">
+  <input type="hidden" name="act" value="1">
+  <input type="hidden" name="ipsmode" value="peer">
+  <fieldset><legend>IPSec-Peer</legend>
+  <table>
+  <tr>
+    <td><a href="/deutsc/hlp/ipsec_ifac_help.html" target="Help" title="Klick: Hilfe">Lokale Schnittstelle</a></td>
+    <td><select name="ipsec_interface" size="1">
+        <option value="eth0" {IFSEL0}>LAN</option>
+        <option value="eth1" {IFSEL1}>WAN</option>
+      </select>
+    </td>
+    <td>IPSec-Schnittstelle auf diesem Router</td>
+  </tr>
+  <tr>
+    <td><a href="/deutsc/hlp/ipsec_ip_help.html" target="Help" title="Klick: Hilfe">IPSec-Gateway</a></td>
+    <td><input type="text" name="rtarget" size="15" maxlength="30" value="{IPSEC_PEER_GW_IP}"></td>
+    <td>IP-Adresse des Gateways, zu dem sich der Waveline-Router als Roadwarrior einw&auml;hlen soll</td>
+  </tr>
+  <tr>
+   <td></td>
+   <td><input type="checkbox" name="ipsec_natt" value="yes" {IPSEC_NATT}></td>
+   <td>aktiviere NAT traversal</td>
+  </tr>
+  <tr><td colspan="3"><hr></td></tr>
+  <tr>
+   <td></td>
+   <td><input type="checkbox" name="ipsec_x509" value="yes" {IPSEC_X509} onclick="checkovpnFormPeerCertState()"></td>
+   <td>verwende X.509-Zertifikate</td>
+  </tr>
+  <tr>
+    <td>Zertifikat</td>
+    <td> <input type="file" name="certfile"> </td>
+    <td>Upload X.509-Zertifikat</td>
+  </tr>
+  <tr>
+    <td>Passwort</td>
+    <td><input type="text" name="x509pwd" size="15" maxlength="30" value=""></td>
+    <td>Passwort zum Extrahieren aus dem pkcs#12-Container</td>
+  </tr>
+  <tr><td colspan="3"><hr></td></tr>
+  <tr>
+    <td><a href="/deutsc/hlp/ipsec_key_help.html" target="Help" title="Klick: Hilfe">Schl&uuml;ssel (PSK)</a></td>
+    <td><input type="text" name="ipskey" size="15" value="{IPSEC_PEER_GW_PSK}" ></td>
+    <td>eine beliebig lange Kombination aus Buchstaben, Ziffern und Sonderzeichen</td>
+  </tr>
+  </table>
+  </fieldset>
+  <table align="right">
+  <tr>
+    <td> <input type="reset" name="Cancel_Button" value="Abbrechen"> </td>
+    <td> <input type="button" name="OK_Button" value="IPSec-Konfiguration &uuml;bernehmen" onclick="checkValues(2);"> </td>
+  </tr>
+  </table>
+</form>
+</div-->
+
+<!-- ******************************************************************************************** -->
+
+<div id="3" class="outerdiv">
+<form action="config.cgi" method="post" target="Main" name="ovpnFormGway">
+  <input type="hidden" name="lang" value="deutsc">
+  <input type="hidden" name="item" value="29">
+  <input type="hidden" name="act" value="1">
+  <input type="hidden" name="ipsmode" value="gateway">
+
+<div id="20">
+
+  <fieldset><legend>IPSec-Gateway</legend>
+  <table>
+  <tr>
+    <td>Lokale Schnittstelle</td>
+    <!--td><select name="ipsec_interface" size="1"> {IPSEC_ITF_OPTS} </select-->
+
+    <td><select name="ipsec_interface" size="1">
+        <option value="eth0" {IFSEL0}>LAN</option>
+        <option value="eth1" {IFSEL1}>WAN</option>
+      </select>
+    </td>
+    <td>IPSec-Schnittstelle auf diesem Router.</td>
+  </tr>
+  <tr>
+   <td></td>
+   <td><input type="checkbox" name="ipsec_natt" value="yes" {IPSEC_NATT}></td>
+   <td>aktiviere NAT traversal</td>
+  </tr>
+  <tr>
+   <td></td>
+   <td><input type="checkbox" name="ipsec_x509" value="yes" {IPSEC_X509} onclick="checkovpnFormGwayCertState()"></td>
+   <td>verwende X.509-Zertifikate</td>
+  </tr>
+  <tr id="tr1">
+    <td>Erlaubte Verbindungspartner</td>
+    <td><input type="text" name="rtarget" size="15" maxlength="30" value=""></td>
+    <td>IP-Adresse von Ger&auml;ten, die eine IPSec Verbindung mit diesem Router aufbauen d&uuml;rfen.</td>
+  </tr>
+  <tr id="tr2">
+    <td>Schl&uuml;ssel</td>
+    <td colspan="2"><input type="text" name="ipskey" size="15" maxlength="30" value="" >
+      <input type="button" name="Add_Button" value="Hinzuf&uuml;gen" onclick="addEntry();"></td>
+  </tr>
+  </table>
+  <table id="tab1">
+  <tr>
+    <th colspan="2">Erlaubte Verbindungspartner</th>
+  </tr>
+  <tr>
+    <td>Verbindungspartner</td>
+    <td>Keys</td>
+  </tr>
+  <tr>
+    <td><select name="peer_list" size="4" onChange="choose(document.ovpnFormGway.peer_list.selectedIndex);"> {PEEROPTS}
+    </select></td>
+    <td><select name="key_list" size="4"  onChange="choose(document.ovpnFormGway.key_list.selectedIndex);"> {KEYOPTS}
+    </select>
+      <input type="button" name="Del_Button" value="L&ouml;schen" onclick="delEntry();">
+      <input type="hidden" name="peerlist" value="{PEERLIST}">
+      <input type="hidden" name="keylist" value="{KEYLIST}">
+    </td>
+  </tr>
+  </table>
+  </fieldset>
+  <table style="width:100%; border-hidden:hidden; border-spacing:0px;">
+  <tr>
+    <td id="td1" class="navicell">
+      <label onclick="chooseInnerDiv(21);">IPSec-Gateway</label>
+    </td>
+    <td id="td2" class="navicell">
+      <label onclick="chooseInnerDiv(22);">L2TP-Gateway</label>
+    </td>
+    <td id="td3" class="underline">&nbsp;</td>
+  </tr>
+  </table>
+</div>
+<div id="21" class="innerdiv">
+  <fieldset><legend>IPSec Standard</legend>
+  <table>
+  <tr>
+    <td><input type="checkbox" name="ipsecgateway" onclick="checkGatewayState()" value="yes" {IPSEC_GW_NATIV_MODE}></td>
+    <td>Aktiviere nativen IPSec-Modus (Server)</td>
+  </tr><tr>
+    <td>Erste Client-IP-Adresse</td>
+    <td><input type="text" name="startaddress" value="{IPSEC_GW_NATIV_ADDR}"></td>
+    <td>Erste IP-Adresse, die an einw&auml;hlende Clients vergeben wird.</td>
+  </tr><tr>
+    <td>Bereichsgr&ouml;&szlig;e</td>
+    <td><input type="text" name="endaddress" value="{IPSEC_GW_NATIV_END}"></td>
+    <td>Anzahl der IP-Adressen, die an einw&auml;hlenden Clients vergeben werden</td>
+  </tr><tr>
+    <td>Client-IP-Netzmaske</td>
+    <td><input type="text" name="netmask" value="{IPSEC_GW_NATIV_MASK}"></td>
+    <td>Netzmaske der zu vergebenden IP-Adressen.</td>
+  </tr><tr>
+    <td>DNS-Server-Adresse</td>
+    <td><input type="text" name="dns" value="{IPSEC_GW_NATIV_DNS}"></td>
+    <td>IP-Adresse des DNS-Servers im VPN</td>
+  </tr><tr>
+    <td>WINS-Server-Adresse</td>
+    <td><input type="text" name="wins" value="{IPSEC_GW_NATIV_WINS}"></td>
+    <td>IP-Adresse des WINS-Servers im VPN</td>
+  </tr>
+  </table>
+  </fieldset>
+  <table align="right">
+  <tr>
+    <td> <input type="reset" name="Cancel_Button" value="Abbrechen"> </td>
+    <td> <input type="button" name="OK_Button" value="IPSec-Konfiguration &uuml;bernehmen" onclick="checkValues(3);"> </td>
+  </tr>
+  </table>
+</div>
+<div id="22" class="innerdiv">
+  <fieldset><legend>L2TP-Gateway</legend>
+  <table>  
+  <tr>
+    <td><input type="checkbox" name="l2tp_service" value="yes" onclick="checkL2tpState()"{IPSEC_GW_L2TP_MODE}></td>
+    <td colspan="2">Aktiviere Microsoft Windows&trade;-kompatiblen IPSec-Modus (L2TP)</td>
+    <td></td><td></td>
+  </tr>
+  <tr>
+    <td>IP-Adresse des PPP Ger&auml;tes</td>
+    <td><input type="text" size="15" maxlength="15" name="rwpppaddr" value="{L2TP_PPP_ADDR}"></td>
+    <td>IPsec-Adresse des Routers</td>
+  </tr>
+  <tr>
+    <td>PPP-Adressbereich von</td>
+    <td><input type="text" size="15" maxlength="15" name="rwpppfrom" value="{L2TP_PPP_STRT}"></td>
+    <td>Bereichsbeginn der zu vergebenden Adressen</td>
+  </tr>
+  <tr>
+    <td>PPP-Adressbereich bis</td>
+    <td><input type="text" size="15" maxlength="15" name="rwpppto" value="{L2TP_PPP_STOP}"></td>
+    <td>Bereichsende der zu vergebenden Adressen</td>
+  </tr>
+  <tr>
+    <td>DNS-Server Adresse</td>
+    <td><input type="text" size="15" maxlength="15" name="rwpppmsdns" value="{L2TP_PPP_MS_DNS}"></td>
+    <td>DNS-Server f&uuml;r die Aufl&ouml;sung von Hostnamen in TCP/IP Netzwerken</td>
+  </tr>
+  <tr>
+    <td>WINS-Server Adresse</td>
+    <td><input type="text" size="15" maxlength="15" name="rwpppmswins" value="{L2TP_PPP_MS_WINS}"></td>
+    <td>WINS-Server f&uuml;r die Aufl&ouml;sung von NetBIOS-Namen in Windows-Netzwerken</td>
+  </tr>
+  <tr>
+    <td>Username</td>
+    <td><INPUT type="text" name="chap_user" size="15" maxlength="30" value="{L2TP_CHAP_USER}" id="chapuser" ></TD>
+    <td>Nutzername f&uuml;r die VPN-Verbindung</td>
+  </tr>
+  <tr>
+    <td>Passwort</td>
+    <TD><INPUT type="password" name="l2tp_pass" size="15" maxlength="30" value="" id="chappass" ></TD>
+    <TD>wiederholt<INPUT type="password" name="l2tp_pass_re" size="15" maxlength="30" value="" id="chappass2" ></TD>
+  </tr>
+  </table>  
+  </fieldset>
+
+  <table align="right">
+  <tr>
+    <td> <input type="reset" name="Cancel_Button" value="Abbrechen"> </td>
+    <td> <input type="button" name="OK_Button" value="IPSec-Konfiguration &uuml;bernehmen" onclick="checkValues(3);"> </td>
+  </tr>
+  </table>
+</form>
+</div>
+</div>
+
+<!-- ******************************************************************************************** -->
+
+</form>
+</body>
+</html>

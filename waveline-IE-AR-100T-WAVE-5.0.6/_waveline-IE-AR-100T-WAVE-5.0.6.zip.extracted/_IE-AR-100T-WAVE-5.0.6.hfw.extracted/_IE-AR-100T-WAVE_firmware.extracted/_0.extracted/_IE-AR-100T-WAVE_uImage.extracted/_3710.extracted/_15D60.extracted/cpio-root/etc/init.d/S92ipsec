@@ -1,0 +1,454 @@
+#!/bin/sh
+
+source /tmp/ulsp/ipsec.config
+source /tmp/ulsp/vpnca.config
+
+if [ $IPSEC_MODE = "none" ]; then
+    echo "Skipping IPSec according to configuration!"
+    exit 0
+fi
+
+DAEMON=/usr/sbin/racoon
+SETKEY=/usr/sbin/setkey
+PIDFILE=/var/run/racoon.pid
+PR_CRT_PATH=/tmp/keys/ipsec
+RACOONCERTPATH=/etc/racoon/certs
+RACOONPATH=/etc/racoon
+RACOONCONF=$RACOONPATH/racoon.conf
+SETKEYCONF=$RACOONPATH/setkey.conf
+PSK=$RACOONPATH/psk.txt
+ARGS="-f $RACOONCONF"
+IPSEC_SVR_ADDR_ANY=${IPSEC_SVR_ADDR_ANY:-"no"}
+IPSEC_SVR_GATEWAY=${IPSEC_SVR_GATEWAY:-"no"}
+
+# Check for existing racoon path
+if [ ! -d $RACOONPATH ]; then
+   mkdir $RACOONPATH;
+fi
+
+test -f $DAEMON || exit 0
+
+queryInterfaces () {
+  ip_addr=$(ip addr show $IPSEC_PHYSICAL_ITF | grep inet | grep global | cut -d" " -f6)
+
+  # this could be more than one address, so get only the first one
+  set -- $ip_addr
+
+  src_ip=$(echo $1 | cut -d"/" -f1)
+  src_pfx=$(ipcalc -p $1 | cut -d"=" -f2)
+  src_net=$(ipcalc -n $1 | cut -d"=" -f2)
+
+  if [ $IPSEC_MODE = "gateway" ]; then
+    # In gateway mode the remote ip's/network is not restricted
+    tgt_ip="0.0.0.0"
+    tgt_net="0.0.0.0"
+    tgt_pfx="0"
+  else
+    # In peer mode the gateway only is in focus.
+    # ATTENTION: we get always class C network here, since $IPSEC_PR_GW_IP has no prefix
+    tgt_ip=$(echo $IPSEC_PR_GW_IP | cut -d"/" -f1)
+    tgt_pfx=$(ipcalc -p $tgt_ip | cut -d"=" -f2)
+    tgt_net=$(ipcalc -n $tgt_ip | cut -d"=" -f2)
+  fi
+}
+
+configureCertificates () {
+  if [ $IPSEC_USE_X509 = "yes" ]; then
+    echo "IPSec: X.509 support is enabled."
+
+    if [ $IPSEC_MODE = "gateway" ]; then
+      [ ! -d $CA_CRT_PATH ] && /usr/sbin/load certs
+    else
+      [ ! -d $PR_CRT_PATH ] && /usr/sbin/load ipsec
+    fi
+
+    echo "IPSec: Configuring X.509 support."
+    [ -d $RACOONCERTPATH ] && rm -r $RACOONCERTPATH
+    mkdir $RACOONCERTPATH
+    cd $RACOONCERTPATH
+
+    if [ $IPSEC_MODE = "gateway" ]; then
+      #ln -s $CA_CRT_PATH/$X509_CA_CRT
+      ln -s $CA_CRT_PATH/$X509_GW_CRT
+      ln -s $CA_CRT_PATH/$X509_GW_PKY
+      ln -s $CA_CRT_PATH/$X509_CA_CRT `openssl x509 -noout -hash -in $CA_CRT_PATH/$X509_CA_CRT`.0
+      ln -s $CA_CRT_PATH/$X509_CA_CRL `openssl crl -noout -hash -in $CA_CRT_PATH/$X509_CA_CRL`.r0
+   else
+      if [ -f $PR_CRT_PATH/$X509_CA_CRT ]; then
+        ln -s $PR_CRT_PATH/$X509_CA_CRT
+        ln -s $PR_CRT_PATH/$X509_CA_CRT `openssl x509 -noout -hash -in $PR_CRT_PATH/$X509_CA_CRT`.0
+      else
+        exit 1
+      fi
+      [ -f $PR_CRT_PATH/$X509_PR_CRT ] && ln -s $PR_CRT_PATH/$X509_PR_CRT || exit 1
+      [ -f $PR_CRT_PATH/$X509_PR_KEY ] && ln -s $PR_CRT_PATH/$X509_PR_KEY || exit 1
+    fi
+    echo "IPSec: X.509 support is active now."
+  fi
+}
+
+configureSetkey() {
+  queryInterfaces
+
+  # Write setkey.conf
+  echo -n                                          > $SETKEYCONF
+  echo "#!/usr/sbin/setkey -f"                    >> $SETKEYCONF
+  echo "flush;"                                   >> $SETKEYCONF
+  echo "spdflush;"                                >> $SETKEYCONF
+  echo ""                                         >> $SETKEYCONF
+
+  if [ $IPSEC_PHYSICAL_ITF = "ppp" ]; then
+    echo "# Road Warrior"                         >> $SETKEYCONF
+    echo "spdadd $src_ip[1701] 0.0.0.0/0[0] any"  >> $SETKEYCONF
+    echo "  -P out ipsec esp/transport//require;" >> $SETKEYCONF
+  fi
+
+  if [ $IPSEC_MODE = "gateway" ]; then
+    echo "spdadd $src_ip/$src_pfx $tgt_ip/$tgt_pfx any -P out ipsec"    >> $SETKEYCONF
+    echo "  esp/transport//require;"                                    >> $SETKEYCONF
+    echo "spdadd $tgt_ip/$tgt_pfx $src_ip/$src_pfx any -P in ipsec"     >> $SETKEYCONF
+    echo "  esp/transport//require;"                                    >> $SETKEYCONF
+    echo ""                                                             >> $SETKEYCONF
+  fi
+}
+
+configureRacoonPeer () {
+  # Write racoon conf
+  queryInterfaces
+  configureCertificates
+
+  echo -n                                                 > $RACOONCONF
+  echo "path pidfile \"$PIDFILE\";"                      >> $RACOONCONF
+  echo "path certificate \"$RACOONCERTPATH\";"         >> $RACOONCONF
+  echo "path pre_shared_key \"$PSK\";"                 >> $RACOONCONF
+  echo ""                                                >> $RACOONCONF
+  echo "#log debug2;"                                    >> $RACOONCONF
+  echo ""                                                >> $RACOONCONF
+  echo "timer"                                           >> $RACOONCONF
+  echo "{"                                               >> $RACOONCONF
+  echo "  phase1 1 min;"                                 >> $RACOONCONF
+  echo "  phase2 1 min;"                                 >> $RACOONCONF
+  if [ $IPSEC_NAT_TRAVERSAL = "yes" ]; then
+    echo "  natt_keepalive 10sec;"                       >> $RACOONCONF
+  fi
+  echo "}"                                               >> $RACOONCONF
+  echo ""                                                >> $RACOONCONF
+  echo "listen"                                          >> $RACOONCONF
+  echo "{"                                               >> $RACOONCONF
+  #echo "  adminsock disabled;"                           >> $RACOONCONF
+  echo "  isakmp $src_ip[500];"                          >> $RACOONCONF
+  if [ $IPSEC_NAT_TRAVERSAL = "yes" ]; then
+    echo "  isakmp_natt $src_ip[4500];"                  >> $RACOONCONF
+  fi
+  echo "}"                                               >> $RACOONCONF
+  echo ""                                                >> $RACOONCONF
+  echo "remote $tgt_ip"                                  >> $RACOONCONF
+  echo "{"                                               >> $RACOONCONF
+  if [ $IPSEC_USE_X509 = "yes" ]; then
+    echo "   exchange_mode aggressive,main;"             >> $RACOONCONF
+    echo "   doi ipsec_doi;"                             >> $RACOONCONF
+    echo "   situation identity_only;"                   >> $RACOONCONF
+    echo "   generate_policy on;"                        >> $RACOONCONF
+    #echo "   proposal_check obey;"                       >> $RACOONCONF
+    echo "   my_identifier asn1dn;"                      >> $RACOONCONF
+    echo "   peers_identifier asn1dn;"                   >> $RACOONCONF
+    echo "   verify_identifier on;"                      >> $RACOONCONF
+    #echo "   ca_type x509 \"$X509_CA_CRT\";"             >> $RACOONCONF
+    echo "   certificate_type x509 \"$X509_PR_CRT\" \"$X509_PR_KEY\";">> $RACOONCONF
+    echo "   mode_cfg on;"                               >> $RACOONCONF
+    echo "   passive off;"                               >> $RACOONCONF
+    echo ""                                              >> $RACOONCONF
+  else
+    echo "   exchange_mode aggressive,main;"             >> $RACOONCONF
+    echo "   initial_contact on;"                        >> $RACOONCONF
+    echo "   proposal_check obey;"                       >> $RACOONCONF
+    echo "   send_cert off;"                             >> $RACOONCONF
+    echo "   send_cr off;"                               >> $RACOONCONF
+    echo "   verify_cert off;"                           >> $RACOONCONF
+    echo "   verify_identifier on;"                      >> $RACOONCONF
+    echo "   my_identifier address \"$src_ip\";"         >> $RACOONCONF
+    echo "   peers_identifier address \"$tgt_ip\";"      >> $RACOONCONF
+    echo "   passive off;"                               >> $RACOONCONF
+  fi
+  if [ $IPSEC_NAT_TRAVERSAL = "yes" ]; then
+    echo "   nat_traversal on;"                          >> $RACOONCONF
+  else
+    echo "   nat_traversal off;"                         >> $RACOONCONF
+  fi
+  echo ""                                                >> $RACOONCONF
+  if [ $IPSEC_USE_X509 = "yes" ]; then
+    echo "    proposal {"                                >> $RACOONCONF
+    echo "        encryption_algorithm 3des;"            >> $RACOONCONF
+    echo "        hash_algorithm md5;"                   >> $RACOONCONF
+    echo "        authentication_method rsasig;"         >> $RACOONCONF
+    echo "        dh_group modp1024;"                    >> $RACOONCONF
+    echo "    }"                                         >> $RACOONCONF
+    echo "}"                                             >> $RACOONCONF
+  else
+    echo "    proposal {"                                >> $RACOONCONF
+    echo "        encryption_algorithm 3des;"            >> $RACOONCONF
+    echo "        hash_algorithm md5;"                   >> $RACOONCONF
+    echo "        authentication_method pre_shared_key;" >> $RACOONCONF
+    echo "        dh_group 2;"                           >> $RACOONCONF
+    echo "    }"                                         >> $RACOONCONF
+    echo "}"                                             >> $RACOONCONF
+  fi
+  echo ""                                                >> $RACOONCONF
+  echo "sainfo address $src_net/$src_pfx any address $tgt_net/$tgt_pfx any {" >> $RACOONCONF
+  echo "  pfs_group 2;"                                  >> $RACOONCONF
+  echo "  encryption_algorithm 3des;"                    >> $RACOONCONF
+  echo "  authentication_algorithm hmac_sha1, hmac_md5;" >> $RACOONCONF
+  echo "  compression_algorithm deflate;"                >> $RACOONCONF
+  echo "}"                                               >> $RACOONCONF
+  echo ""                                                >> $RACOONCONF
+  echo "sainfo anonymous {"                              >> $RACOONCONF
+  echo "  pfs_group 2;"                                  >> $RACOONCONF
+  echo "  lifetime time 1 hour;"                         >> $RACOONCONF
+  echo "  encryption_algorithm 3des;"                    >> $RACOONCONF
+  echo "  authentication_algorithm hmac_md5;"            >> $RACOONCONF
+  echo "  compression_algorithm deflate;"                >> $RACOONCONF
+  echo "}"                                               >> $RACOONCONF
+  echo ""                                                >> $RACOONCONF
+
+  if [ $IPSEC_USE_X509 != "yes" ]; then
+    # Write PSK file
+    echo "Restoring PSK's on IPSec peers ..."
+    echo "# Peer		Secret"                   > $PSK
+    echo "$IPSEC_PR_GW_IP	$IPSEC_PR_GW_PSK"        >> $PSK
+
+    # Fix file permissions for $PSK
+    chmod 600 $PSK
+  fi
+}
+
+configureRacoonGateway () {
+  # Write racoon conf
+  queryInterfaces
+  configureCertificates
+
+  echo -n                                                 > $RACOONCONF
+  echo "path pidfile \"$PIDFILE\";"                      >> $RACOONCONF
+  echo "path certificate \"$RACOONCERTPATH\";"           >> $RACOONCONF
+  echo "path pre_shared_key \"$PSK\";"                   >> $RACOONCONF
+  echo ""                                                >> $RACOONCONF
+  echo "listen"                                          >> $RACOONCONF
+  echo "{"                                               >> $RACOONCONF
+  echo "  isakmp $src_ip[500];"                          >> $RACOONCONF
+  if [ $IPSEC_NAT_TRAVERSAL = "yes" ]; then
+    echo "  isakmp_natt $src_ip[4500];"                  >> $RACOONCONF
+  fi
+  echo "}"                                               >> $RACOONCONF
+  echo ""                                                >> $RACOONCONF
+  echo "timer"                                           >> $RACOONCONF
+  echo "{"                                               >> $RACOONCONF
+  echo "  phase1 1 min;"                                 >> $RACOONCONF
+  echo "  phase2 1 min;"                                 >> $RACOONCONF
+  if [ $IPSEC_NAT_TRAVERSAL = "yes" ]; then
+    echo "  natt_keepalive 10sec;"                       >> $RACOONCONF
+  fi
+  echo "}"                                               >> $RACOONCONF
+  echo ""                                                >> $RACOONCONF
+  echo "remote anonymous"                                >> $RACOONCONF
+  echo "{"                                               >> $RACOONCONF
+  if [ $IPSEC_USE_X509 = "yes" ]; then
+    if [ $IPSEC_GW_NATIV_MODE = "yes" ]; then
+      echo "   exchange_mode aggressive,main,base;"        >> $RACOONCONF
+      echo "   doi ipsec_doi;"                             >> $RACOONCONF
+      #echo "   situation identity_only;"                   >> $RACOONCONF
+      echo "   generate_policy on;"                        >> $RACOONCONF
+      echo "   my_identifier asn1dn;"                      >> $RACOONCONF
+      #echo "   peers_identifier asn1dn;"                   >> $RACOONCONF
+      #echo "   verify_identifier on;"                      >> $RACOONCONF
+      echo "   certificate_type x509 \"$X509_GW_CRT\" \"$X509_GW_PKY\";">> $RACOONCONF
+      echo "   dpd_delay 20;"                              >> $RACOONCONF
+      echo "   ike_frag on;"                               >> $RACOONCONF
+      echo "   proposal_check obey;"                       >> $RACOONCONF
+    else
+      echo "   exchange_mode aggressive,main;"             >> $RACOONCONF
+      echo "   doi ipsec_doi;"                             >> $RACOONCONF
+      echo "   situation identity_only;"                   >> $RACOONCONF
+      echo "   generate_policy on;"                        >> $RACOONCONF
+      echo "   my_identifier asn1dn;"                      >> $RACOONCONF
+      echo "   peers_identifier asn1dn;"                   >> $RACOONCONF
+      echo "   verify_identifier on;"                      >> $RACOONCONF
+      echo "   certificate_type x509 \"$X509_GW_CRT\" \"$X509_GW_PKY\";">> $RACOONCONF
+      #echo "   dpd_delay 20;"                              >> $RACOONCONF
+      #echo "   ike_frag on;"                               >> $RACOONCONF
+    fi
+    echo ""                                              >> $RACOONCONF
+  else
+    echo "   exchange_mode aggressive,main,base;"        >> $RACOONCONF
+    echo "   passive on;"                                >> $RACOONCONF
+    echo "   situation identity_only;"                   >> $RACOONCONF
+    echo ""                                              >> $RACOONCONF
+    echo "   my_identifier address;"                     >> $RACOONCONF
+    echo "   generate_policy on;"                        >> $RACOONCONF
+    echo ""                                              >> $RACOONCONF
+    echo "   lifetime time 2 min;"                       >> $RACOONCONF
+    echo "   initial_contact on;"                        >> $RACOONCONF
+    echo "   proposal_check obey;"                       >> $RACOONCONF
+  fi
+  if [ $IPSEC_NAT_TRAVERSAL = "yes" ]; then
+    echo "   nat_traversal on;"                          >> $RACOONCONF
+  else
+    echo "   nat_traversal off;"                         >> $RACOONCONF
+  fi
+  if [ $IPSEC_GW_NATIV_MODE = "yes" ]; then
+    echo "   mode_cfg on;"                               >> $RACOONCONF
+  fi
+  echo ""                                                >> $RACOONCONF
+  if [ $IPSEC_USE_X509 = "yes" ]; then
+    if [ $IPSEC_GW_NATIV_MODE = "yes" ]; then
+      echo "   proposal {"                               >> $RACOONCONF
+      #echo "     encryption_algorithm 3des;"             >> $RACOONCONF
+      echo "     encryption_algorithm aes;"              >> $RACOONCONF
+      #echo "     hash_algorithm sha1;"                   >> $RACOONCONF
+      echo "     hash_algorithm md5;"                    >> $RACOONCONF
+      #echo "     authentication_method rsasig;"          >> $RACOONCONF
+      echo "     authentication_method hybrid_rsa_server;" >> $RACOONCONF
+      echo "     dh_group 2;"                            >> $RACOONCONF
+      echo "   }"                                        >> $RACOONCONF
+      echo "}"                                           >> $RACOONCONF
+      echo ""                                            >> $RACOONCONF
+      echo "sainfo anonymous"                            >> $RACOONCONF
+      echo "{"                                           >> $RACOONCONF
+      echo "    pfs_group 2;"                            >> $RACOONCONF
+      echo "    lifetime time 1 hour;"                   >> $RACOONCONF
+      echo "    encryption_algorithm aes;"               >> $RACOONCONF
+      echo "    authentication_algorithm hmac_md5;"      >> $RACOONCONF
+      echo "    compression_algorithm lzs;"              >> $RACOONCONF
+      echo "}"                                           >> $RACOONCONF
+    else
+      echo "   proposal {"                               >> $RACOONCONF
+      echo "     encryption_algorithm 3des;"             >> $RACOONCONF
+      echo "     hash_algorithm sha1;"                   >> $RACOONCONF
+      echo "     authentication_method rsasig;"          >> $RACOONCONF
+      echo "     dh_group modp1024;"                     >> $RACOONCONF
+      echo "   }"                                        >> $RACOONCONF
+      echo "}"                                           >> $RACOONCONF
+      echo ""                                            >> $RACOONCONF
+      echo "sainfo anonymous"                            >> $RACOONCONF
+      echo "{"                                           >> $RACOONCONF
+      #echo "   pfs_group 2;"                            >> $RACOONCONF
+      echo "    lifetime time 1 hour;"                   >> $RACOONCONF
+      echo "    encryption_algorithm 3des;"              >> $RACOONCONF
+      echo "    authentication_algorithm hmac_md5;"      >> $RACOONCONF
+      echo "    compression_algorithm deflate;"          >> $RACOONCONF
+      echo "}"                                           >> $RACOONCONF
+    fi
+  else
+    echo "   proposal {"                                 >> $RACOONCONF
+    echo "     encryption_algorithm 3des;"               >> $RACOONCONF
+    echo "     hash_algorithm md5;"                      >> $RACOONCONF
+    #echo "     encryption_algorithm aes;"                >> $RACOONCONF
+    #echo "     hash_algorithm sha1;"                     >> $RACOONCONF
+    echo "     authentication_method pre_shared_key;"    >> $RACOONCONF
+    echo "     dh_group 2;"                              >> $RACOONCONF
+    echo "   }"                                          >> $RACOONCONF
+    echo "}"                                             >> $RACOONCONF
+    echo ""                                              >> $RACOONCONF
+    echo "sainfo anonymous"                              >> $RACOONCONF
+    echo "{"                                             >> $RACOONCONF
+    echo "    lifetime time 1 hour;"                     >> $RACOONCONF
+    echo "    encryption_algorithm 3des;"                >> $RACOONCONF
+    echo "    authentication_algorithm hmac_md5;"        >> $RACOONCONF
+    #echo "    compression_algorithm deflate;"            >> $RACOONCONF
+    # CISCO compatibility mode
+    #echo "    encryption_algorithm aes;"                 >> $RACOONCONF
+    #echo "    authentication_algorithm hmac_sha1;"       >> $RACOONCONF
+    echo "    compression_algorithm lzs;"                >> $RACOONCONF
+    echo "}"                                             >> $RACOONCONF
+  fi
+  echo ""                                                >> $RACOONCONF
+  if [ $IPSEC_GW_NATIV_MODE = "yes" ]; then
+    echo "mode_cfg"                                      >> $RACOONCONF
+    echo "{"                                             >> $RACOONCONF
+    echo "    network4 $IPSEC_GW_NATIV_ADDR;"            >> $RACOONCONF
+    echo "    netmask4 $IPSEC_GW_NATIV_MASK;"            >> $RACOONCONF
+    echo "    pool_size $IPSEC_GW_NATIV_POOL;"           >> $RACOONCONF
+    [ $IPSEC_GW_NATIV_DNS ] && echo "    dns4 $IPSEC_GW_NATIV_DNS;"   >> $RACOONCONF
+    [ $IPSEC_GW_NATIV_WINS ] && echo "    wins4 $IPSEC_GW_NATIV_WINS;">> $RACOONCONF
+    #echo "    auth_source system;"                       >> $RACOONCONF
+    #echo "    pfs_group 2;"                              >> $RACOONCONF
+    echo "}"                                             >> $RACOONCONF
+    echo ""                                              >> $RACOONCONF
+  fi
+
+  if [ $IPSEC_USE_X509 != "yes" ]; then
+    # Write PSK file
+    echo "Restoring PSK's on IPSec peers ..."
+    echo "# Peer	Secret"                           > $PSK
+    idx=1
+    while [ $idx -le $IPSEC_PEERS_N ]; do
+      ipsec_peer_name=$(eval echo '$'$(echo IPSEC_PEERS_${idx}_NAME))
+      ipsec_peer_psk=$(eval echo '$'$(echo IPSEC_PEERS_${idx}_PSK))
+      echo "$ipsec_peer_name	$ipsec_peer_psk"         >> $PSK
+      idx=$(expr $idx + 1)
+    done
+    # Fix file permissions for $PSK
+    chmod 600 $PSK
+  fi
+}
+
+firewallUp() {
+   # open ipsec port on firewall
+   iptables -A INPUT -p udp --dport 500 -j ACCEPT
+   if [ $IPSEC_NAT_TRAVERSAL = "yes" ]; then
+     iptables -A INPUT -p udp --dport 4500 -j ACCEPT
+   fi
+
+   # allow authentification
+   iptables -A INPUT -p esp -j ACCEPT
+   iptables -A INPUT -p ah -j ACCEPT
+}
+
+firewallDown() {
+   # allow authentification
+   iptables -D INPUT -p ah -j ACCEPT
+   iptables -D INPUT -p esp -j ACCEPT
+
+   iptables -D INPUT -p udp --dport 500 -j ACCEPT
+   # always try to remove the following rule, due to possible configuration changes
+   iptables -D INPUT -p udp --dport 4500 -j ACCEPT
+}
+
+case "$1" in
+   start)
+      echo "IPSec: Flushing Security Associations database ..."
+      $SETKEY -FP
+      echo "IPSec: Configuring Security Associations database ..."
+      configureSetkey
+      $SETKEY -f $SETKEYCONF
+      echo "IPSec: Configuring IPSec service ..."
+      case "$IPSEC_MODE" in
+        peer)
+          configureRacoonPeer
+        ;;
+        gateway)
+          configureRacoonGateway
+        ;;
+      esac
+      echo "IPSec: Setting firewall gateway rules ..."
+      firewallUp
+      echo "IPSec: Starting IKE daemon ..."
+      start-stop-daemon -S -x $DAEMON -- $ARGS
+   ;;
+   stop)
+      echo "IPSec: Stopping IKE daemon ..."
+      start-stop-daemon -K -q -x $DAEMON
+      echo "IPSec: Flushing Security Associations database ..."
+      $SETKEY -FP
+      echo "IPSec: Deleting firewall gateway rules ..."
+      firewallDown
+   ;;
+   restart|reload|force-reload)
+      $0 stop
+      sleep 1
+      $0 start
+   ;;
+   *)
+      exit 1
+   ;;
+esac
+
+exit 1

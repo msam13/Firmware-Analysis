@@ -1,0 +1,251 @@
+#! /bin/sh -e
+### BEGIN INIT INFO
+# Provides:           snmpd snmptrapd
+# Required-Start:     $network $local_fs
+# Required-Stop:      $network $local_fs
+# Default-Start:      2 3 4 5
+# Default-Stop:       0 6
+# Short-Description:  SNMP agents
+# Description:        NET SNMP (Simple Network Management Protocol) Agents
+### END INIT INFO
+#
+# Author:    Jochen Friedrich <jochen@scram.de>
+#
+set -e
+
+source /tmp/ulsp/snmp.config
+source /tmp/ulsp/digin.config
+
+export PATH=/sbin:/usr/sbin:/bin:/usr/bin
+
+test -x /usr/sbin/snmpd || exit 0
+#test -x /usr/sbin/snmptrapd || exit 0
+
+# be sure there is a /var/run/snmpd, even with tmpfs
+mkdir -p /var/run/snmpd > /dev/null 2> /dev/null
+chmod 0750 /var/run/snmpd
+
+# Defaults
+#export MIBDIRS=/usr/share/snmp/mibs
+SNMPDOPTS='-p /var/run/snmpd.pid'
+#TRAPDRUN=no
+#TRAPDOPTS='-Lsd -p /var/run/snmptrapd.pid'
+
+# Reads config file (will override defaults above)
+#[ -r /etc/default/snmpd ] && . /etc/default/snmpd
+
+ssd_oknodo="-o"
+
+# Cd to / before starting any daemons.
+cd /
+
+# Create compatibility link to old AgentX socket location
+if [ "$SNMPDCOMPAT" = "yes" ]; then
+  ln -sf /var/agentx/master /var/run/agentx
+fi
+
+firewallUp() {
+  iptables -A INPUT -p udp --dport 161 -j ACCEPT
+}
+
+firewallDown() {
+  iptables -D INPUT -p udp --dport 161 -j ACCEPT
+}
+
+configureSNMPv3()
+{
+	# delete existing SNMPv3 user
+	/bin/sed -i -e "/usmUser/d" /var/lib/snmp/snmpd.conf
+	
+	if [ -z "$SNMP_V3USER" ]
+	then
+		logger "snmpd: No SNMPv3 user defined."
+		return
+	fi
+	
+	if [ -z "$SNMP_V3AUTHPASS" ]
+	then
+		logger "snmpd: SNMPv3 user has no authentication password."
+		return
+	fi
+	
+	if [ -z "$SNMP_V3PRIVPASS" ]
+	then
+		logger "snmpd: SNMPv3 user has no privacy password."
+		return
+	fi
+
+	if [ -z $SNMP_V3AUTHTYPE ]
+	then
+		logger "snmpd: No SNMPv3 authentication type defined! Using MD5."
+		SNMP_V3AUTHTYPE='MD5'
+	fi
+	
+	if [ -z $SNMP_V3PRIVPROT ]
+	then
+		logger "snmpd: No SNMPv3 privacy protocol defined! Using DES."
+		SNMP_V3PRIVPROT='DES'
+	fi
+
+	echo "createUser $SNMP_V3USER $SNMP_V3AUTHTYPE $SNMP_V3AUTHPASS \
+		$SNMP_V3PRIVPROT $SNMP_V3PRIVPASS" >> /var/lib/snmp/snmpd.conf
+	echo "rwuser $SNMP_V3USER" >> /usr/share/snmp/snmpd.conf		
+}
+
+configureTraps()
+{
+	if [ -z "$SNMP_TRAPCOMMUNITY" ]
+	then
+	   logger "snmpd: No trap community defined. Using default 'public'!"
+	   SNMP_TRAPCOMMUNITY='public'
+	fi
+	echo "trapcommunity $SNMP_TRAPCOMMUNITY" >> /etc/snmp/snmpd.conf
+
+	idx=0
+	while [ $idx -lt $SNMP_TRAPSINK_N ]
+	do
+		idx=$(expr $idx + 1)
+		trapsink=$(eval echo '$'$(echo SNMP_TRAPSINK_${idx}_IP))
+
+		echo "trapsink $trapsink" >> /etc/snmp/snmpd.conf
+	done
+
+	# MIB monitoring requires SNMPv3 user
+	if [ -z "$SNMP_V3USER" ]
+	then
+		logger "snmpd: No SNMPv3 user defined, no linkUp/Down and DI traps."
+		return
+	fi
+
+	echo "agentSecName $SNMP_V3USER" >> /etc/snmp/snmpd.conf	
+	echo "linkUpDownNotifications yes" >> /etc/snmp/snmpd.conf
+
+	# requires disman/event module
+	if [ $DIGIN_OPT = "yes" ]
+	then
+		MIB="IE-AR-100T-WAVE-MIB"
+		DI_ON=1
+		DI_OFF=2
+		freq=2  # in seconds
+
+		di=0
+		while [ $di -lt 2 ]
+		do
+			di=$(expr $di + 1)
+			
+			LH=$(eval echo '$'$(echo DIGIN_DI${di}LH))
+			HL=$(eval echo '$'$(echo DIGIN_DI${di}HL))
+			
+			if [ $LH = "yes" ]
+			then
+				echo -n "notificationEvent DI${di}_ON " >> /etc/snmp/snmpd.conf
+				echo "${MIB}::iearTrapDI-ON -i ${MIB}::iearDINumber.$di" >> /etc/snmp/snmpd.conf
+				echo -n "monitor -r $freq -e DI${di}_ON -S " >> /etc/snmp/snmpd.conf
+				echo "-I MON_DI${di}_ON ${MIB}::iearDIStatus.$di == $DI_ON" >> /etc/snmp/snmpd.conf
+			fi
+			
+			if [ $HL = "yes" ]
+			then
+				echo -n "notificationEvent DI${di}_OFF " >> /etc/snmp/snmpd.conf
+				echo "${MIB}::iearTrapDI-OFF -i ${MIB}::iearDINumber.$di" >> /etc/snmp/snmpd.conf
+				echo -n "monitor -r $freq -e DI${di}_OFF -S " >> /etc/snmp/snmpd.conf
+				echo "-I MON_DI${di}_OFF ${MIB}::iearDIStatus.$di == $DI_OFF" >> /etc/snmp/snmpd.conf
+			fi
+		done
+	fi
+}
+
+configure () {
+	# start monitoring of DIs
+	/sbin/modprobe wm_di
+
+	mkdir -p /etc/snmp
+	mkdir -p /usr/share/snmp
+	mkdir -p /var/lib/snmp
+	
+	echo -n > /etc/snmp/snmpd.conf
+	echo -n > /usr/share/snmp/snmpd.conf
+	echo -n > /var/lib/snmp/snmpd.conf
+
+	SNMP_SYSDESC="$(cat /etc/deviceID) ($(cat /etc/version))"
+	
+	if [ -z "$SNMP_SYSNAME" ]
+	then
+		logger "snmpd: No system name defined. Using default!"
+		SNMP_SYSNAME="$SNMP_SYSDESC"
+
+        config_file=$(ls -l /tmp/ulsp/snmp.config | cut -d '>' -f 2 | tr -d ' ') 
+		/bin/sed -i -e "s/SNMP_SYSNAME=.*/SNMP_SYSNAME=\'$SNMP_SYSNAME\'/" /tmp/ulsp/$config_file
+        chown admin:admin /tmp/ulsp/$config_file
+	fi
+	if [ -z "$SNMP_SYSLOCATION" ]
+	then
+		logger "snmpd: No system location defined. Using default!"
+		SNMP_SYSLOCATION='Detmold'
+	fi
+	if [ -z "$SNMP_SYSCONTACT" ]
+	then
+		logger "snmpd: No system contact defined. Using default!"
+		SNMP_SYSCONTACT='info@weidmueller.com'
+	fi
+
+	echo "sysname $SNMP_SYSNAME" >> /etc/snmp/snmpd.conf
+	echo "sysdescr $SNMP_SYSDESC" >> /etc/snmp/snmpd.conf
+	echo "syslocation $SNMP_SYSLOCATION" >> /etc/snmp/snmpd.conf
+	echo "syscontact $SNMP_SYSCONTACT" >> /etc/snmp/snmpd.conf
+
+	if [ -z "$SNMP_ROCOMMUNITY" ]
+	then
+		logger "snmpd: No ro community defined!"
+	else
+		echo "rocommunity $SNMP_ROCOMMUNITY" >> /etc/snmp/snmpd.conf
+	fi
+
+	if [ -z "$SNMP_RWCOMMUNITY" ]
+	then
+		logger "snmpd: No rw community defined!"
+	else
+		echo "rwcommunity $SNMP_RWCOMMUNITY" >> /etc/snmp/snmpd.conf
+	fi
+
+	echo "sysservices 76" >> /etc/snmp/snmpd.conf
+
+	configureTraps
+	configureSNMPv3
+    
+    # allow smux connections from ospfd
+    echo "smuxpeer .1.3.6.1.4.1.3317.1.2.5" >> /etc/snmp/snmpd.conf
+}
+
+case "$1" in
+  start)
+    echo -n "Starting network management services:"
+	configure
+    firewallUp
+	start-stop-daemon -q -S -x /usr/sbin/snmpd -- $SNMPDOPTS
+	echo -n " snmpd"
+    echo "."
+    ;;
+  stop)
+    echo -n "Stopping network management services:"
+    firewallDown
+    start-stop-daemon -q -K $ssd_oknodo -x /usr/sbin/snmpd
+    echo -n " snmpd"
+    echo "."
+    ;;
+  restart|reload|force-reload)
+    echo -n "Restarting network management services:"
+	configure
+    start-stop-daemon -q -K $ssd_oknodo -x /usr/sbin/snmpd
+    # Allow the daemons time to exit completely.
+    sleep 2
+	start-stop-daemon -q -S -x /usr/sbin/snmpd -- $SNMPDOPTS
+	echo -n " snmpd"
+    echo "."
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart|reload|force-reload}"
+    exit 1
+esac
+
+exit 0

@@ -1,0 +1,62 @@
+#! /bin/sh
+#
+# System-V init script for the lldpd daemon
+#
+source /tmp/ulsp/lldpd.config
+
+if [ $LLDPD_INTERFACE = "none" ]
+then
+  echo "Skipping LLDPD according to configuration"
+  exit 0
+fi
+
+DAEMON=/usr/sbin/lldpd
+#DAEMON_PATH=/etc/dropbear
+DAEMON_OPTS=""
+NAME=lldpd
+PIDFILE=/var/run/$NAME.pid
+
+configure() {
+   # cleanup /etc for privsep
+   sed -i '/lldpd/d' /etc/group
+   sed -i '/lldpd/d' /etc/passwd
+   sed -i '/lldpd/d' /etc/shadow
+
+   # add lldpd group, user and home for privsep
+   echo "lldpd:x:70:"                                    >> /etc/group
+   echo "lldpd:x:1000:70:lldpd user:/home/lldpd:/bin/sh" >> /etc/passwd
+   echo "nobody:*:10933:0:99999:7:::"                    >> /etc/shadow
+   mkdir -p /home/lldpd
+   chown -R lldpd:lldpd /home/lldpd
+   
+   # create tmp folder for lldpd
+   mkdir -p /var/run/lldpd
+   
+   # make l2tpctl runnable as admin
+   chmod u+s /usr/bin/lldpctl
+}
+
+case "$1" in
+    start)
+        echo -n "Starting lldpd:"
+	    configure
+        start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE --exec $DAEMON -- $DAEMON_OPTS
+        echo "."
+	    ;;
+    stop)
+        echo -n "Stopping lldpd:"
+        start-stop-daemon --stop --quiet --pidfile $PIDFILE --exec $DAEMON
+        echo -n " dropbear"
+        echo "."
+	    ;;
+    restart|reload|force-reload)
+        $0 stop
+        sleep 1
+        $0 start
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|restart|reload|force-reload}" >&2
+        exit 1
+        ;;
+esac
+

@@ -1,0 +1,149 @@
+#!/bin/sh
+#
+
+PATH=/bin:/usr/bin:/sbin:/usr/sbin
+DAEMON=/usr/sbin/xl2tpd
+PIDFILE=/var/run/xl2tpd.pid
+RUNDIR=/var/run/xl2tpd
+L2TP_DIR=/etc/xl2tpd
+L2TP_CONF=/etc/xl2tpd/xl2tpd.conf
+L2TP_SECRETS=/etc/xl2tpd/l2tp-secrets
+L2TP_CHAP_SECRETS=/etc/ppp/chap-secrets
+L2TP_PPP_CONF=/etc/ppp/peers/options.xl2tpd
+OPT_L2TP=${OPT_L2TP:-"no"}
+
+source /tmp/ulsp/ipsec.config
+source /tmp/ulsp/l2tp.config
+
+if [ $IPSEC_MODE != "gateway" ]; then
+  echo "Skipping L2TP according to configuration!"
+  exit 0
+else
+  if [ $IPSEC_GW_L2TP_MODE != "yes" ]; then
+    echo "Skipping L2TP according to configuration!"
+    exit 0
+  else
+    # Check for existing xl2tpd path
+    [ ! -d $RUNDIR ] && mkdir -p $RUNDIR;
+    [ $? != "0" ] && echo "Can't create $RUNDIR"
+  fi
+fi
+
+test -f $DAEMON || exit 0
+
+# load 'ppp over l2tp' kernel module
+#modprobe pppol2tp
+
+configure () {
+
+  [ ! -d $L2TP_DIR ] && mkdir -p $L2TP_DIR
+  [ $? != "0" ] && echo "Can't create $L2TP_DIR"
+
+  # write xl2tp configuration
+  echo -n                                             > $L2TP_CONF
+  echo "[global]"                                    >> $L2TP_CONF
+  echo "port = 1701"                                 >> $L2TP_CONF
+  echo "listen-addr = 0.0.0.0"                       >> $L2TP_CONF
+  echo "debug tunnel = yes"                          >> $L2TP_CONF
+  echo ""                                            >> $L2TP_CONF
+  echo "[lns default]"                               >> $L2TP_CONF
+  echo "ip range = $L2TP_PPP_STRT - $L2TP_PPP_STOP"  >> $L2TP_CONF
+  echo "local ip = $L2TP_PPP_ADDR"                   >> $L2TP_CONF
+  echo "require chap = yes"                          >> $L2TP_CONF
+  echo "refuse pap = yes"                            >> $L2TP_CONF
+  #echo "require authentication = yes"               >> $L2TP_CONF
+  echo "name = IPSecVPN"                             >> $L2TP_CONF
+  echo "ppp debug = yes"                             >> $L2TP_CONF
+  echo "pppoptfile = $L2TP_PPP_CONF"                 >> $L2TP_CONF
+  echo "length bit = yes"                            >> $L2TP_CONF
+
+  # write ppp configuration for xl2tp
+  echo -n                                             > $L2TP_PPP_CONF
+  echo "ipcp-accept-local"                           >> $L2TP_PPP_CONF
+  echo "ipcp-accept-remote"                          >> $L2TP_PPP_CONF
+  #echo "ms-dns 192.168.101.254"                      >> $L2TP_PPP_CONF
+  #echo "ms-wins 192.168.101.254"                     >> $L2TP_PPP_CONF
+  echo "noccp"                                       >> $L2TP_PPP_CONF
+  echo "auth"                                        >> $L2TP_PPP_CONF
+  echo "crtscts"                                     >> $L2TP_PPP_CONF
+  echo "passive"                                     >> $L2TP_PPP_CONF
+  echo "idle 1800"                                   >> $L2TP_PPP_CONF
+  echo "mtu 1410"                                    >> $L2TP_PPP_CONF
+  echo "mru 1410"                                    >> $L2TP_PPP_CONF
+  echo "nodefaultroute"                              >> $L2TP_PPP_CONF
+  echo "debug"                                       >> $L2TP_PPP_CONF
+  echo "lock"                                        >> $L2TP_PPP_CONF
+  echo "proxyarp"                                    >> $L2TP_PPP_CONF
+  echo "connect-delay 5000"                          >> $L2TP_PPP_CONF
+  [ $L2TP_PPP_MS_DNS ]  && echo "ms-dns $L2TP_PPP_MS_DNS"   >> $L2TP_PPP_CONF
+  [ $L2TP_PPP_MS_WINS ] && echo "ms-wins $L2TP_PPP_MS_WINS" >> $L2TP_PPP_CONF
+
+  #[ -f $L2TP_CHAP_SECRETS ] && rm -f $L2TP_CHAP_SECRETS
+  #echo "# client  server secret  IP addresses"             > $L2TP_CHAP_SECRETS
+  #echo "$L2TP_CHAP_USER   *   $L2TP_CHAP_PASS   *"        >> $L2TP_CHAP_SECRETS
+  #echo "*   $L2TP_CHAP_USER   $L2TP_CHAP_PASS   *"        >> $L2TP_CHAP_SECRETS
+
+  [ ! -d $RUNDIR ] && mkdir -p $RUNDIR
+  [ $? != "0" ] && echo "Can't create $RUNDIR"
+}
+
+firewallUp() {
+    # open l2tp port on firewall
+    iptables -A INPUT -p udp --dport 1701 -j ACCEPT
+    # add l2tp ips to forward chain
+    # we need to create our own chain, to be able to delete in on shutdown, even if
+    # configuration changed meanwhile
+    l2tp_network=$(ipcalc -n $L2TP_PPP_ADDR | cut -d"=" -f2)
+    iptables -N l2tp_fwd
+    iptables -A l2tp_fwd -s $l2tp_network/24 -j ACCEPT
+    # we must insert at least before blacklist here
+    position=$(expr $(iptables -L FORWARD | wc -l) - 2)
+    iptables -I FORWARD $position -j l2tp_fwd
+
+    # always masq L2TP network
+    iptables -t nat -N l2tp_masq
+    iptables -t nat -A l2tp_masq -s $l2tp_network/24 -j MASQUERADE
+    # just append it here
+    iptables -t nat -A POSTROUTING -j l2tp_masq
+}
+
+firewallDown() {
+    # remove l2tp port on firewall
+    iptables -D INPUT -p udp --dport 1701 -j ACCEPT
+    # remove l2tp ips from forward chain (as you see, we don't need the ip here
+    iptables -D FORWARD -j l2tp_fwd    # remove rule
+    iptables -F l2tp_fwd               # flush chain
+    iptables -X l2tp_fwd               # remove chain
+
+    iptables -t nat -D POSTROUTING -j l2tp_masq
+    iptables -t nat -F l2tp_masq
+    iptables -t nat -X l2tp_masq
+}
+
+case "$1" in
+  start)
+    echo "L2TP: Configuring L2TP service ..."
+    configure
+    echo "L2TP: Setting firewall server rules ..."
+    firewallUp
+    echo "L2TP: Starting daemon ..."
+    start-stop-daemon -S  -p $PIDFILE -x $DAEMON -- -c $L2TP_CONF
+    ;;
+  stop)
+    echo "L2TP: Stopping daemon ..."
+    start-stop-daemon -K  -p $PIDFILE -x $DAEMON
+    echo "L2TP: Removing firewall server rules ..."
+    firewallDown
+    ;;
+  restart|force-reload)
+    $0 stop
+    sleep 1
+    $0 start
+    ;;
+  *)
+    echo "Usage: /etc/init.d/S37l2tdp {start|stop|restart|force-reload}"
+    exit 1
+    ;;
+esac
+
+exit 0

@@ -1,0 +1,319 @@
+#!/bin/sh
+#
+# Original version by Robert Leslie
+# <rob@mars.org>, edited by iwj and cs
+# Modified for openvpn by Alberto Gonzalez Iniesta <agi@agi.as>
+# Modified for restarting / starting / stopping single tunnels by Richard Mueller <mueller@teamix.net>
+
+source /tmp/ulsp/openvpn.config
+source /tmp/ulsp/vpnca.config
+
+NAME=openvpn
+KEY_NAME=static.key
+CRT_NAME=vpnpeer.p12
+KEY_RAM_DIR=/tmp/keys/$NAME
+DAEMON=/usr/sbin/$NAME
+CONFIG_DIR=/etc/$NAME
+PIDFILE=/var/run/$NAME.pid
+DAEMON_OPTS="--daemon --writepid $PIDFILE --config ${CONFIG_DIR}/${NAME}.conf"
+
+OVPN_ROUTE_N=${OVPN_ROUTE_N:-"0"}
+OVPN_PKCS12_PASSWD=${OVPN_PKCS12_PASSWD:-""}
+PKCS12_PASSWD_FILE=$KEY_RAM_DIR/pkcs12.pwd
+
+test -x $DAEMON || exit 0
+test -d $CONFIG_DIR || exit 0
+
+# load and copy keys
+# this must be done before the openvpn check because it might be enabled 
+# by the user at runtime, and then needs the complete folder structure for the
+# web interface
+/usr/sbin/load openvpn
+
+if [ $OVPN_MODE = "none" ]; then
+   echo "Skipping openvpn according to configuration!"
+   exit 0
+fi
+
+test $DEBIAN_SCRIPT_DEBUG && set -v -x
+
+queryInterfaces () {
+  ip_addr_pub=$(ip addr show $OVPN_LISTEN_IF | grep inet | grep global | cut -d" " -f6)
+  # this could be more than one address, use only the first
+  set -- $ip_addr_pub
+
+  pub_ip=$(echo $1 | cut -d"/" -f1)
+  pub_pfx=$(ipcalc -p $1 | cut -d"=" -f2)
+  pub_net=$(ipcalc -n $1 | cut -d"=" -f2)
+
+
+  ip_addr_prv=$(ip addr show $OVPN_PRIVATE_IF | grep inet | grep global | cut -d" " -f6)
+  # this could be more than one address, use only the first
+  set -- $ip_addr_prv
+
+  prv_ip=$(echo $1 | cut -d"/" -f1)
+  prv_pfx=$(ipcalc -p $1 | cut -d"=" -f2)
+  prv_net=$(ipcalc -n $1 | cut -d"=" -f2)
+}
+
+configureCertificates () {
+  if [ $OVPN_USE_X509 = "yes" ]; then
+    echo "OpenVPN: X.509 support is enabled."
+
+    [ ! -d $CA_CRT_PATH ] && /usr/sbin/load certs
+    [ ! -f $CA_CRT_PATH/$X509_GW_DHP ] && $CA_CMD_PATH/cert gen dhp
+
+    if [ ! -f $CA_CRT_PATH/$X509_CA_CRT ]; then
+      echo "OpenVPN: Building new local X.509 Certificate Authority."
+      $CA_CMD_PATH/cert gen root
+      $CA_CMD_PATH/cert gen gateway
+      #$CA_CMD_PATH/cert gen peer
+    fi
+    echo "OpenVPN: X.509 support is active now."
+  fi
+}
+
+configure_client () {
+    OVPN_USE_X509="yes"
+    # copy password to file to let openvpn read the PKCS12 file
+    if [ -n "$OVPN_PKCS12_PASSWD" ]; then
+      echo $OVPN_PKCS12_PASSWD > $PKCS12_PASSWD_FILE
+    fi  
+    if [ $OVPN_LISTEN_IF = "ppp" ]; then
+      echo "Not Implemented yet"
+    else
+      SOURCEIP=$(ip addr show ${OVPN_LISTEN_IF} | grep inet | grep global | cut -d" " -f6 | cut -d"/" -f1)
+      # create $CONFIG_DIR/${NAME}.conf
+      echo -n 							 > $CONFIG_DIR/${NAME}.conf
+      echo "client"						>> ${CONFIG_DIR}/${NAME}.conf
+      echo "local $SOURCEIP"					>> ${CONFIG_DIR}/${NAME}.conf
+      echo "remote $OVPN_HOST_REMOTE $OVPN_PORT_REMOTE"		>> ${CONFIG_DIR}/${NAME}.conf
+      echo "port $OVPN_PORT"					>> ${CONFIG_DIR}/${NAME}.conf
+      echo "nobind"						>> ${CONFIG_DIR}/${NAME}.conf
+      if [ $OVPN_PROTOCOL = "tcp" ]; then
+	echo "proto ${OVPN_PROTOCOL}-client"			>> ${CONFIG_DIR}/${NAME}.conf
+      else
+	echo "proto $OVPN_PROTOCOL"				>> ${CONFIG_DIR}/${NAME}.conf
+      fi
+      echo "dev $OVPN_DEV_TYPE"					>> ${CONFIG_DIR}/${NAME}.conf
+      echo "resolv-retry infinite"				>> ${CONFIG_DIR}/${NAME}.conf
+      if [ $OVPN_USE_X509 = "yes" ]; then
+        #configureCertificates
+        echo "pkcs12 $KEY_RAM_DIR/$CRT_NAME"			>> ${CONFIG_DIR}/${NAME}.conf
+        echo "ns-cert-type server"				>> ${CONFIG_DIR}/${NAME}.conf
+      else
+        echo "secret $KEY_RAM_DIR/$KEY_NAME"			>> ${CONFIG_DIR}/${NAME}.conf
+      fi
+      #echo "persist-key"					>> ${CONFIG_DIR}/${NAME}.conf
+      echo "persist-tun"					>> ${CONFIG_DIR}/${NAME}.conf
+      if test $OVPN_COMPRESSION = "lzo" ; then
+         echo "comp-lzo"					>> ${CONFIG_DIR}/${NAME}.conf
+      fi
+      #echo "ifconfig $OVPN_TUNNEL_LOCAL $OVPN_TUNNEL_REMOTE"	>> ${CONFIG_DIR}/${NAME}.conf
+      echo "keepalive $OVPN_PEER_KEEPALIVE_INTERVAL $OVPN_PEER_KEEPALIVE_TIMEOUT">> ${CONFIG_DIR}/${NAME}.conf
+      echo "verb $OVPN_VERB"					>> ${CONFIG_DIR}/${NAME}.conf
+      if [ -n "$OVPN_PKCS12_PASSWD" ]; then
+	echo "askpass $PKCS12_PASSWD_FILE"			>> ${CONFIG_DIR}/${NAME}.conf
+      fi
+      echo "up $CONFIG_DIR/ovpn-connection-up.sh"		>> ${CONFIG_DIR}/${NAME}.conf
+      echo "down $CONFIG_DIR/ovpn-connection-down.sh"		>> ${CONFIG_DIR}/${NAME}.conf
+    fi
+}
+
+configure_server () {
+    OVPN_USE_X509="yes"
+    if [ $OVPN_LISTEN_IF = "ppp" ]; then
+      echo "Not Implemented yet"
+    else
+      SOURCEIP=$(ip addr show ${OVPN_LISTEN_IF} | grep inet | grep global | cut -d" " -f6 | cut -d"/" -f1)
+      # create $CONFIG_DIR/${NAME}.conf
+      echo -n 							 > ${CONFIG_DIR}/${NAME}.conf
+      echo "mode server"					>> ${CONFIG_DIR}/${NAME}.conf
+      echo "tls-server"						>> ${CONFIG_DIR}/${NAME}.conf
+      echo "local $SOURCEIP"					>> ${CONFIG_DIR}/${NAME}.conf
+      if [ $OVPN_PROTOCOL = "tcp" ]; then
+	echo "proto ${OVPN_PROTOCOL}-server"			>> ${CONFIG_DIR}/${NAME}.conf
+      else
+	echo "proto ${OVPN_PROTOCOL}"				>> ${CONFIG_DIR}/${NAME}.conf
+      fi
+      echo "port $OVPN_PORT"					>> ${CONFIG_DIR}/${NAME}.conf
+      
+      
+      echo "dev $OVPN_DEV_TYPE"					>> ${CONFIG_DIR}/${NAME}.conf
+      #echo "dev-node $OVPN_DEV_NODE"				>> ${CONFIG_DIR}/${NAME}.conf
+      echo "user nobody"					>> ${CONFIG_DIR}/${NAME}.conf
+      echo "group nobody"					>> ${CONFIG_DIR}/${NAME}.conf
+      if [ $OVPN_USE_X509 = "yes" ]; then
+        configureCertificates
+        #echo "pkcs12 $CA_CRT_PATH/$X509_GW_P12"		>> ${CONFIG_DIR}/${NAME}.conf
+        echo "ca $CA_CRT_PATH/$X509_CA_CRT"			>> ${CONFIG_DIR}/${NAME}.conf
+        echo "cert $CA_CRT_PATH/$X509_GW_CRT"			>> ${CONFIG_DIR}/${NAME}.conf
+        echo "key $CA_CRT_PATH/$X509_GW_KEY"			>> ${CONFIG_DIR}/${NAME}.conf
+        echo "dh $CA_CRT_PATH/$X509_GW_DHP"			>> ${CONFIG_DIR}/${NAME}.conf
+        echo "crl-verify $CA_CRT_PATH/$X509_CA_CRL"		>> ${CONFIG_DIR}/${NAME}.conf
+      else
+        echo "secret $KEY_RAM_DIR/$KEY_NAME"			>> ${CONFIG_DIR}/${NAME}.conf
+      fi
+      #echo "duplicate-cn"					>> ${CONFIG_DIR}/${NAME}.conf
+      echo "persist-key"					>> ${CONFIG_DIR}/${NAME}.conf
+      echo "persist-tun"					>> ${CONFIG_DIR}/${NAME}.conf
+      if test $OVPN_COMPRESSION = "lzo" ; then
+         echo "comp-lzo"					>> ${CONFIG_DIR}/${NAME}.conf
+      fi
+      if [ $OVPN_SVR_BRIDGING_MODE = "yes" ]; then
+        echo "server-bridge $OVPN_SVR_BRIDGE_IF_IP $OVPN_SVR_BRIDGE_IF_MASK $OVPN_SVR_BRIDGE_IPRANGE_START $OVPN_SVR_BRIDGE_IPRANGE_STOP"	>> ${CONFIG_DIR}/${NAME}.conf
+      else
+        echo "server $OVPN_SVR_NET $OVPN_SVR_MASK"		>> ${CONFIG_DIR}/${NAME}.conf
+      fi
+      if [ ! $OVPN_SVR_IP_POOL_PERSIST = ""  ]; then
+        echo "ifconfig-pool-persist $OVPN_SVR_IP_POOL_PERSIST"  >> ${CONFIG_DIR}/${NAME}.conf
+      fi
+      if [ $OVPN_SVR_REDIRECT_DEFAULT = "yes" ]; then
+        echo "push \"redirect-gateway\""			>> ${CONFIG_DIR}/${NAME}.conf
+      fi
+      echo "push \"dhcp-option DNS $OVPN_SVR_DNS\""		>> ${CONFIG_DIR}/${NAME}.conf
+      echo "push \"dhcp-option WINS $OVPN_SVR_WINS\""		>> ${CONFIG_DIR}/${NAME}.conf
+      if [ $OVPN_SVR_CLIENT_VISIBILITY = "yes" ]; then
+        echo "client-to-client"					>> ${CONFIG_DIR}/${NAME}.conf
+      fi
+      echo "max-clients $OVPN_SVR_CLIENTS_MAX"			>> ${CONFIG_DIR}/${NAME}.conf
+      echo "keepalive $OVPN_PEER_KEEPALIVE_INTERVAL $OVPN_PEER_KEEPALIVE_TIMEOUT">> ${CONFIG_DIR}/${NAME}.conf
+      echo "verb $OVPN_VERB"					>> ${CONFIG_DIR}/${NAME}.conf
+      echo "mute 20"						>> ${CONFIG_DIR}/${NAME}.conf
+      echo "tun-mtu 1500"					>> ${CONFIG_DIR}/${NAME}.conf
+      echo "tun-mtu-extra 32"					>> ${CONFIG_DIR}/${NAME}.conf
+      echo "client-connect $CONFIG_DIR/ovpn-client-connect.sh"	>> ${CONFIG_DIR}/${NAME}.conf
+      echo "client-disconnect $CONFIG_DIR/ovpn-client-disconnect.sh">> ${CONFIG_DIR}/${NAME}.conf
+      idx=1
+      while [ $idx -le $OVPN_ROUTE_N ]; do
+	ovpn_route_net=$(eval echo '$'$(echo OVPN_ROUTE_${idx}_NET))
+	ovpn_route_mask=$(eval echo '$'$(echo OVPN_ROUTE_${idx}_MASK))
+	echo "push \"route $ovpn_route_net $ovpn_route_mask\""    >> ${CONFIG_DIR}/${NAME}.conf
+	idx=$(expr $idx + 1)
+      done
+      
+      
+    fi
+}
+
+configure_tunnel () {
+    if [ $OVPN_LISTEN_IF = "ppp" ]; then
+      echo "Not Implemented yet"
+    else
+      SOURCEIP=$(ip addr show ${OVPN_LISTEN_IF} | grep inet | grep global | cut -d" " -f6 | cut -d"/" -f1)
+      # create $CONFIG_DIR/${NAME}.conf
+      echo -n 							 > $CONFIG_DIR/${NAME}.conf
+      echo "local $SOURCEIP"					>> ${CONFIG_DIR}/${NAME}.conf
+      echo "remote $OVPN_HOST_REMOTE $OVPN_PORT_REMOTE"		>> ${CONFIG_DIR}/${NAME}.conf
+      echo "port $OVPN_PORT"					>> ${CONFIG_DIR}/${NAME}.conf
+      echo "proto $OVPN_PROTOCOL"				>> ${CONFIG_DIR}/${NAME}.conf
+      echo "dev $OVPN_DEV_TYPE"					>> ${CONFIG_DIR}/${NAME}.conf
+      echo "ifconfig $OVPN_TUNNEL_LOCAL $OVPN_TUNNEL_REMOTE"	>> ${CONFIG_DIR}/${NAME}.conf
+      if [ $OVPN_USE_X509 = "yes" ]; then
+        #configureCertificates
+        echo "pkcs12 $KEY_RAM_DIR/$CRT_NAME"			>> ${CONFIG_DIR}/${NAME}.conf
+        echo "ns-cert-type client"				>> ${CONFIG_DIR}/${NAME}.conf
+      else
+        echo "secret $KEY_RAM_DIR/$KEY_NAME"			>> ${CONFIG_DIR}/${NAME}.conf
+      fi
+      echo "ping-timer-rem"					>> ${CONFIG_DIR}/${NAME}.conf
+      echo "persist-tun"					>> ${CONFIG_DIR}/${NAME}.conf
+      echo "persist-key"					>> ${CONFIG_DIR}/${NAME}.conf
+      if test $OVPN_COMPRESSION = "lzo" ; then
+         echo "comp-lzo"					>> ${CONFIG_DIR}/${NAME}.conf
+      fi
+      echo "user nobody"					>> ${CONFIG_DIR}/${NAME}.conf
+      echo "group nobody"					>> ${CONFIG_DIR}/${NAME}.conf
+      echo "keepalive $OVPN_PEER_KEEPALIVE_INTERVAL $OVPN_PEER_KEEPALIVE_TIMEOUT">> ${CONFIG_DIR}/${NAME}.conf
+      echo "verb $OVPN_VERB"					>> ${CONFIG_DIR}/${NAME}.conf
+    fi
+}
+
+firewallUp() {
+   echo "OpenVPN: Setting firewall rules."
+
+   iptables -N openvpn
+   iptables -t nat -N openvpn_masq
+
+   iptables -A INPUT -j openvpn
+   # we must insert at least before blacklist here
+   position=$(expr $(iptables -L FORWARD | wc -l) - 2)
+   iptables -I FORWARD $position -j openvpn
+
+   iptables -t nat -A POSTROUTING -j openvpn_masq
+
+   queryInterfaces
+   # open OpenVPN port on firewall
+   # $OVPN_LISTEN_IF is connected to the internet.
+   # $OVPN_PRIVATE_IF is connected to a private subnet.
+
+   iptables -A openvpn -p $OVPN_PROTOCOL --dport $OVPN_PORT -j ACCEPT
+
+   # Allow packets from TUN/TAP devices.
+   # When OpenVPN is run in a secure mode,
+   # it will authenticate packets prior
+   # to their arriving on a tun or tap
+   # interface.  Therefore, it is not
+   # necessary to add any filters here,
+   # unless you want to restrict the
+   # type of packets which can flow over
+   # the tunnel.
+   iptables -A openvpn -i $OVPN_DEV_TYPE+ -j ACCEPT
+
+   # Allow packets from private subnets
+   iptables -A openvpn -i $OVPN_PRIVATE_IF -j ACCEPT
+
+   # Keep state of connections from local machine and private subnets
+   iptables -A openvpn -m state --state NEW -o $OVPN_LISTEN_IF -j ACCEPT
+
+   # Masquerade local subnet
+   iptables -t nat -A openvpn_masq -s $prv_net/$prv_pfx -o $OVPN_LISTEN_IF -j MASQUERADE
+}
+
+firewallDown() {
+   echo "OpenVPN: Removing firewall rules."
+
+   iptables -D INPUT -j $NAME
+   iptables -D FORWARD -j $NAME
+   iptables -t nat -D POSTROUTING -j ${NAME}_masq
+
+   iptables -F $NAME
+   iptables -t nat -F ${NAME}_masq
+
+   iptables -X $NAME
+   iptables -t nat -X ${NAME}_masq
+}
+
+case "$1" in
+start)
+  firewallUp
+  echo -n "OpenVPN: Starting $OVPN_MODE:"
+  eval configure_$OVPN_MODE
+  # start openvpn now
+  start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE --exec $DAEMON -- $DAEMON_OPTS
+
+  echo -n " $NAME"
+  echo "."
+  ;;
+stop)
+  echo -n "OpenVPN: Stopping $OVPN_MODE:"
+
+  start-stop-daemon --quiet --stop --pidfile $PIDFILE --exec $DAEMON
+  [ $? = 0 ] && rm -r $PIDFILE && firewallDown
+
+  echo "."
+  ;;
+# We only 'reload' for running VPNs. New ones will only start with 'start' or 'restart'.
+restart|reload|force-reload)
+  $0 stop
+  sleep 1
+  $0 start
+  echo "."
+  ;;
+*)
+  echo "Usage: $0 {start|stop|reload|restart|force-reload}" >&2
+  exit 1
+  ;;
+esac
+
+exit 0

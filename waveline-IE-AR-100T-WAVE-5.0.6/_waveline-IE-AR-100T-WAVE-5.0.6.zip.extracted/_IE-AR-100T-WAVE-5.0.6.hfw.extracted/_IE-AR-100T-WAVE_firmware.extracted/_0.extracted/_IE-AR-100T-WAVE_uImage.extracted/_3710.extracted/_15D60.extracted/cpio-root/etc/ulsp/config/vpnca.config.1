@@ -1,0 +1,44 @@
+CA_CRT_PATH='/tmp/certs'
+CA_CNF_PATH='/tmp/certs/config'
+CA_CMD_PATH='/usr/sbin'
+
+# The Security Officer is the CA's owner!
+# Security Officer password
+CA_SO_PASS='detmold'
+
+# A Security User is a certificates owner!
+# Security User password
+CA_SU_PASS='detmold'
+
+CA_P12_NAME='IE-AR-100T-WAVE-VPN'
+
+X509_CA_CFG='RouterCA.config'
+X509_CA_EXT='RouterCA.ext'
+X509_CA_CRC='RouterCRL.config'
+X509_CA_BIT='1024'
+X509_CA_DAY='1825'
+X509_CA_SER='routerca.serial'
+X509_CA_CDB='index.txt'
+X509_CA_DBA='index.txt.attr'
+X509_CA_CSR='routerca.csr.pem'
+X509_CA_CRL='routerca.crl.pem'
+X509_CA_KEY='routerca.key.pem'
+X509_CA_CRT='routerca.crt.pem'
+
+X509_GW_CFG='VPNServer.config'
+X509_GW_EXT='VPNServer.ext'
+X509_GW_DAY='365'
+X509_GW_CSR='vpngateway.csr.pem'
+X509_GW_CRT='vpngateway.crt.pem'
+X509_GW_KEY='vpngateway.key.pem'
+X509_GW_PKY='vpngateway.key.plain.pem'
+X509_GW_DHP='vpngateway.dhp.pem'
+X509_GW_P12='vpngateway.p12'
+
+X509_PR_CFG='VPNClient.config'
+X509_PR_EXT='VPNClient.ext'
+X509_PR_DAY='365'
+X509_PR_CSR='vpnpeer.csr.pem'
+X509_PR_CRT='vpnpeer.crt.pem'
+X509_PR_KEY='vpnpeer.key.pem'
+X509_PR_P12='vpnpeer.p12'

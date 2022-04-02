@@ -1,0 +1,146 @@
+#!/bin/sh
+#DEBUG='yes'
+
+# include configs
+CONFIG_DIR="/tmp/ulsp"
+
+source $CONFIG_DIR/forward.config
+
+valueOf() {
+	echo $(eval echo \$$1)
+}
+
+debug() {
+	if [ "$DEBUG" = "yes" ]
+	then
+		echo $1
+	fi	
+}
+
+clean() {
+	iptables -D FORWARD -j portfw
+	iptables -t nat -D PREROUTING -j portfw_nat
+
+	iptables -F portfw
+	iptables -t nat -F portfw_nat
+
+	iptables -X portfw
+	iptables -t nat -X portfw_nat
+}
+
+isIP() {
+  ip=$1
+
+  # check for leading dots
+  [ $(echo "$ip" | grep "^\.") ] && echo 1 && return 1
+
+  # check for trailing dots
+  [ $(echo "$ip" | grep "\.$") ] && echo 1 && return 1
+
+  oldIFS=$IFS
+  IFS=.
+  set -- $ip
+  # reset IFS
+  IFS=$oldIFS
+
+  # check for the number of bytes
+  [ $# -ne 4 ] && echo 1 && return 1
+
+  # check for leading 0
+  [ $1 -eq 0 ] && echo 1 && return 1
+
+  # check the single bytes
+  for oct in $1 $2 $3 $4; 
+  do
+    # allow only numbers
+    [ -z $(echo $oct | egrep "^[0-9]+$") ] && echo 1 && return 1
+
+    # between 0 and 255
+    [ $oct -lt 0 -o $oct -gt 255 ] && echo 1 && return 1
+  done
+
+  echo 0 && return 0
+}
+
+configure() {
+	debug "configure portforwarding ..."
+	iptables -N portfw
+	iptables -A FORWARD -p ALL -j portfw
+
+	iptables -t nat -N portfw_nat
+	iptables -t nat -A PREROUTING -j portfw_nat
+
+	idx=1
+	while [ "$idx" -le "$PORTFW_N" ]
+	do
+		# init
+		src=$(valueOf PORTFW_${idx}_SOURCE)
+		dst=$(valueOf PORTFW_${idx}_TARGET)
+		proto=$(valueOf PORTFW_${idx}_PROTOCOL)
+		debug "Adding Rule: $src $proto $dst"
+
+		oldIFS="$IFS"
+		IFS=":"
+
+		set -- $src
+		if [ $# -eq 2 ]
+		then
+		  # we indeed have to parts
+		  src_host=$1 
+		  src_port=$2 
+		else
+		  # we only have one part
+		  src_host=
+		  src_port=
+		  [ $(isIP $1) -eq 0 ] && src_host=$1 || src_port=$1
+		fi
+
+		set -- $dst
+		dst_host=$1
+		[ $# -eq 2 ] && dst_port=$2 || dst_port=
+
+		IFS="$oldIFS"
+
+		[ $src_host ] && ipt_src_host="-d $src_host" || ipt_src_host=
+		[ $dst_host ] && ipt_dst_host="-d $dst_host" || ipt_dst_host=
+
+		[ $src_port ] && ipt_src_port="--dport $(echo $src_port | tr '-' ':')" || ipt_src_port=
+		[ $dst_port ] && ipt_dst_port="--dport $(echo $dst_port | tr '-' ':')" || ipt_dst_port=
+		[ $src_port ] && src_port=":$src_port"
+		[ $dst_port ] && dst_port=":$dst_port"
+
+		debug "DNAT: $proto from $src_host$src_port to $dst_host$dst_port"
+		iptables -t nat -A portfw_nat -p $proto $ipt_src_host $ipt_src_port -j DNAT --to $dst_host$dst_port
+
+		debug "FORWARD: $proto to $dst_host$dst_port"
+		iptables -A portfw -p $proto $ipt_dst_host $ipt_dst_port -j ACCEPT
+
+		idx=$(expr $idx + 1)
+	done
+}
+
+NAME=fw_portfw
+DESC="iptables"
+SCRIPTNAME=/etc/init.d/S36$NAME
+
+case "$1" in
+    start)
+	  logger "Starting $DESC" $NAME
+	  configure
+      ;;
+    stop)
+	  logger "Stopping $DESC" $NAME
+	  clean
+      ;;
+    restart)
+	  logger "Reloading $DESC " $NAME
+	  clean
+	  configure
+      ;;
+    *)
+        echo "Usage: $SCRIPTNAME {start|stop|restart}" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

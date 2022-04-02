@@ -1,0 +1,132 @@
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta name="author" content="E.Kalliwoda">
+<meta name="date" content="2009-02-17 11:00:00">
+<meta http-equiv="expires" content="0">
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<meta http-equiv="cache-control" content="no-store">
+<meta http-equiv="pragma" content="no-cache">
+<title>Firmware-Update-Konfiguration</title>
+<link rel="stylesheet" type="text/css" href="css/stile.css" media="screen">
+<script src="englis/auxfunc.js" type="text/javascript"></script>
+<script type="text/javascript">
+
+function checkState() {
+/*  if(document.updateForm.dhcpsena.checked == true) {
+    document.updateForm.dhcpfromaddr.disabled=false;
+    document.updateForm.dhcptoaddr.disabled=false;
+    document.updateForm.dhcpmask.disabled=false;
+    document.updateForm.dhcplease.disabled=false;
+    document.updateForm.dhcps_interface.disabled=false;
+    document.updateForm.dhcpdns.disabled=false;
+    document.updateForm.dhcpgateway.disabled=false;
+    document.updateForm.dhcpdomain.disabled=false;
+  } else {
+    document.updateForm.dhcpfromaddr.disabled=true;
+    document.updateForm.dhcptoaddr.disabled=true;
+    document.updateForm.dhcpmask.disabled=true;
+    document.updateForm.dhcplease.disabled=true;
+    document.updateForm.dhcps_interface.disabled=true;
+    document.updateForm.dhcpdns.disabled=true;
+    document.updateForm.dhcpgateway.disabled=true;
+    document.updateForm.dhcpdomain.disabled=true;
+  }
+*/}
+
+function checkValues() {
+  var result=true;
+/*
+  if(document.updateForm.dhcpsena.checked == true) {
+    if (!isValidIP(document.updateForm.dhcpfromaddr.value)) {
+      document.updateForm.dhcpfromaddr.focus();
+      result=false;
+    }
+    if (result && !isValidIP(document.updateForm.dhcptoaddr.value)) {
+      document.updateForm.dhcptoaddr.focus();
+      result=false;
+    }
+    if (result) { // avoid multiple error messages
+      var netmask=document.updateForm.dhcpmask.value;
+      numbers=netmask.split(".");
+      if(numbers.length !=4) {
+        alert("Die Netzmaske ist keine korrekte IP-Adresse. Bitte ueberpruefen!");
+	document.updateForm.dhcpmask.focus();
+        result=false;
+      } else {
+        for(i=0;i<numbers.length;++i) {
+          if(isNaN(numbers[i]) || (numbers[i]=="") || (numbers[i]<0) || (numbers[i]>255)) {
+            alert("Die Netzmaske ist keine korrekte IP-Adresse. Bitte ueberpruefen!");
+	    document.updateForm.dhcpmask.focus();
+            result=false;
+            break;
+          }
+        }
+      }
+    }
+    if (result && isNaN(document.updateForm.dhcplease.value)) {
+      alert("Bitte geben Sie eine Zahl ein!");
+      document.updateForm.dhcplease.focus();
+      result=false;
+    }
+    if (result && document.updateForm.dhcpdns.value != "" && !isValidIP(document.updateForm.dhcpdns.value)) {
+      document.updateForm.dhcpdns.focus;
+      result=false;
+    }
+    if (result && document.updateForm.dhcpgateway.value != "" && !isValidIP(document.updateForm.dhcpgateway.value)) {
+      document.updateForm.dhcpgateway.focus;
+      result=false;
+    }
+  }
+*/  if(result==true) {
+    document.updateForm.submit();
+  }
+}
+
+//-->
+</script>
+</head>
+<body>
+<form action="config.cgi" method="post" target="Main" name="updateForm">
+  <input type="hidden" name="lang" value="englis">
+  <input type="hidden" name="item" value="1">
+  <input type="hidden" name="act"  value="1">
+<fieldset><legend>Firmware update</legend>
+<table>
+  <TR>
+    <td>Protocol</TD>
+    <TD>
+      <select name="updt_protocol" size="1"> {PROTOCOL_OPTS}
+      </select>
+    </td>
+    <td>Protocol that should used updating the firmware</td>
+  </TR>
+  <tr>
+    <td>Server</a></td>
+    <td><input type="text" size="25" maxlength="15" name="updt_svr" value="{UPDATE_SERVER}"></td>
+    <td>IP address of the server the update should be loaded from</td>
+  </tr>
+  <tr>
+    <td>Path</td>
+    <td><input type="text" size="25" name="updt_path" value="{UPDATE_PATH}"></td>
+    <td>Path to the update file on the server</td>
+  </tr>
+  <tr>
+    <td>Name</a></td>
+    <td><input type="text" size="25" name="updt_file" value="{UPDATE_FILE}"></td>
+    <td>file name of the update</td>
+  </tr>
+</table>
+</fieldset>
+<table align="right">
+  <tr>
+    <td><input type="reset" name="Cancel_Button" value="Cancel"></td>
+    <td><input type="button" name="OK_Button" value="Apply" onclick="checkValues()"></td>
+  </tr>
+</table>
+</form>
+
+</body>
+</html>

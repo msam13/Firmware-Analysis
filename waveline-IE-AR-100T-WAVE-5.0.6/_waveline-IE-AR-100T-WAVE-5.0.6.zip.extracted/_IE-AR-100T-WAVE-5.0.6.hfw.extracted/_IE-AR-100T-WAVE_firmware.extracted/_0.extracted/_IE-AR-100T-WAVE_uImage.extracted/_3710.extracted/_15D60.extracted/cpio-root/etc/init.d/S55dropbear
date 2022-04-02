@@ -1,0 +1,91 @@
+#!/bin/sh
+#
+# Starts dropbear sshd.
+#
+
+# load ssh configuration
+KEY_DIR=/tmp/keys
+DAEMON=/usr/sbin/dropbear
+DAEMON_PATH=/etc/dropbear
+DAEMON_OPTS="-d ${KEY_DIR}/dss_host_key -r ${KEY_DIR}/rsa_host_key -w"
+NAME=dropbear
+PIDFILE=/var/run/$NAME.pid
+
+# Make sure the dropbear[key] progam exists
+test -x /usr/bin/dropbearkey -a -x $DAEMON || exit 0
+
+set -e
+
+firewallUp() {
+  iptables -A INPUT -p tcp --dport 22 -j ACCEPT    # ssh
+}
+
+firewallDown() {
+  iptables -D INPUT -p tcp --dport 22 -j ACCEPT    # ssh
+}
+
+configure()
+{
+    # Make sure keys are available if existing 
+    /usr/sbin/load hostkeys
+
+    # Make sure dropbear directory exists
+    if [ ! -d ${DAEMON_PATH} ] ; then
+        mkdir -p ${DAEMON_PATH}
+    fi
+    
+    # Check for the Dropbear RSA key
+    if [ -f ${KEY_DIR}/rsa_host_key ] ; then
+        echo "restoring rsa key ..."
+    else
+        echo "generating rsa key... "
+        /usr/bin/dropbearkey -t rsa -f ${KEY_DIR}/rsa_host_key > /dev/null 2>&1
+        generated='key'
+    fi
+
+    # Check for the Dropbear DSS key
+    if [ -f ${KEY_DIR}/dss_host_key ] ; then
+        echo "restoring dsa key ..."
+    else
+        echo "generating dsa key... "
+        /usr/bin/dropbearkey -t dss -f ${KEY_DIR}/dss_host_key > /dev/null 2>&1
+        generated='key'
+    fi
+
+    # save host keys here if neccessary
+    if [ $generated ]
+    then
+        /usr/sbin/save hostkeys
+    fi
+    
+    umask 077
+}
+
+case "$1" in
+    start)
+        echo -n "Starting secure shell:"
+	    configure
+        start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE --exec $DAEMON -- $DAEMON_OPTS
+        echo -n " dropbear"
+        echo "."
+        firewallUp
+	    ;;
+    stop)
+        echo -n "Stopping secure shell:"
+        firewallDown
+        start-stop-daemon --stop --quiet --pidfile $PIDFILE --exec $DAEMON
+        echo -n " dropbear"
+        echo "."
+	    ;;
+    restart|reload|force-reload)
+        $0 stop
+        sleep 1
+        $0 start
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|restart|reload|force-reload}" >&2
+        exit 1
+        ;;
+esac
+
+exit $?

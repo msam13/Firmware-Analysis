@@ -1,0 +1,136 @@
+#!/bin/sh
+#
+# Configure router firewall.
+#
+# Covered features:
+# - black and white lists
+# - nets with and without masquerading
+# - trusted nets
+# - port forwarding
+# - virtual mapping
+# - port filter
+# - special rules
+# - additional rules for router services
+
+#DEBUG='yes'
+
+# include configs
+CONFIG_DIR="/tmp/ulsp"
+
+debug()
+{
+	if [ "$DEBUG" = "yes" ]
+	then
+		echo $1
+	fi	
+}
+
+clean() {
+	# clean up all chains
+	iptables -F FORWARD
+	iptables -F INPUT
+	iptables -F OUTPUT
+	iptables -t nat -F POSTROUTING
+	iptables -t nat -F PREROUTING
+	
+	iptables -P FORWARD ACCEPT
+	iptables -P INPUT   ACCEPT
+	iptables -P OUTPUT  ACCEPT
+	
+	iptables -F bad_tcp  > /dev/null 2>&1
+
+	iptables -X bad_tcp  > /dev/null 2>&1
+}
+
+configure() {
+	iptables -P FORWARD DROP          # forward policy is drop
+	iptables -P INPUT   DROP          # REJECT is not possible here :-(
+	iptables -P OUTPUT  ACCEPT        # output policy is accept
+	
+	iptables -N bad_tcp               # catch SYN flooding attacks
+    iptables -A bad_tcp -p tcp --tcp-flags SYN,ACK SYN,ACK -m state --state NEW -j REJECT --reject-with tcp-reset
+    iptables -A bad_tcp -p tcp ! --syn -m state --state NEW -j DROP
+
+    ip=$(ip addr show eth0 | grep inet | grep global | cut -d" " -f6)
+    eth0_ip=$(echo $ip | cut -d "/" -f1)
+	
+    ip=$(ip addr show eth1 | grep inet | grep global | cut -d" " -f6)
+    eth1_ip=$(echo $ip | cut -d "/" -f1)
+
+	######################################################################
+	# INPUT CHAIN 
+	#
+	# input handles only packets which are delivered locally
+	######################################################################
+
+    debug "INPUT: Catch SYN flooding and broken TCP"
+    iptables -A INPUT -p tcp -j bad_tcp
+
+	debug "INPUT: accept all from loopback device and local adresses"
+	iptables -A INPUT -p ALL -i lo -s 127.0.0.1 -j ACCEPT
+	iptables -A INPUT -p ALL -i lo -s $eth0_ip -j ACCEPT
+	iptables -A INPUT -p ALL -i lo -s $eth1_ip -j ACCEPT
+	
+	debug "INPUT: pakets from anynet which are related to established connections"
+	iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+	debug "INPUT: accept ICMP"
+	iptables -A INPUT -p icmp -j ACCEPT
+
+	debug "INPUT: enable echo port for configurator"
+	iptables -A INPUT -p tcp --dport 7 -j ACCEPT
+
+	######################################################################
+	# FORWARD CHAIN 
+	#
+	# handles all packets which have to be routed to other subnets
+	######################################################################
+	
+    debug "FORWARD: Catch SYN flooding and broken TCP"
+    iptables -A FORWARD -p tcp -j bad_tcp
+
+	debug "FORWARD: pakets from anynet which are related to established connections"
+	iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+	######################################################################
+	# OUTPUT CHAIN 
+	#
+	# output has no special rules, default policy accept
+	# local applications are free to communicate with any other host
+	######################################################################
+	
+	
+	######################################################################
+	# NAT TABLE
+	#
+	# PREROUTING has no rules yet (see rc???.portfw)
+	# OUTPUT has no rules
+	# POSTROUTING
+	# 
+	######################################################################
+}
+
+
+NAME=fw_base
+DESC="iptables"
+SCRIPTNAME=/etc/init.d/S31$NAME
+
+case "$1" in
+    start)
+	  logger "Starting $DESC $NAME"
+	  clean
+	  configure
+    ;;
+    stop)
+	  logger "Stopping $DESC $NAME is not allowed"
+    ;;
+    restart)
+	  logger "Reloading $DESC $NAME is not allowed"
+    ;;
+    *)
+      echo "Usage: $SCRIPTNAME {start|stop|restart}" >&2
+      exit 1
+      ;;
+esac
+
+exit 0

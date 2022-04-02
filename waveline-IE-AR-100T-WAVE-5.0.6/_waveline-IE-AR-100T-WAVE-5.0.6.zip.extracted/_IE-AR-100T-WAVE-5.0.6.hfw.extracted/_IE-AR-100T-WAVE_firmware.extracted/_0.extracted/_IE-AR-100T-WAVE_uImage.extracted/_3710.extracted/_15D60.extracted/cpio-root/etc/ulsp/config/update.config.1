@@ -1,0 +1,18 @@
+# one of ftp, http (and may be later on scp) 
+UPDATE_PROTOCOL='ftp'
+
+# ip of update server
+UPDATE_SERVER='192.168.1.1'
+
+# path to firmware file on server
+UPDATE_PATH='/'
+
+# name of the firmware
+# this is an tgz archive that includes:
+# required:
+#   - rootfs and its checksum
+#   - kernel and its checksum
+# optional:
+#   - additional scripts to work on
+#   - additional files (f.e. configfs or parts)
+UPDATE_FILE='IE-AR-100T-WAVE_firmware'

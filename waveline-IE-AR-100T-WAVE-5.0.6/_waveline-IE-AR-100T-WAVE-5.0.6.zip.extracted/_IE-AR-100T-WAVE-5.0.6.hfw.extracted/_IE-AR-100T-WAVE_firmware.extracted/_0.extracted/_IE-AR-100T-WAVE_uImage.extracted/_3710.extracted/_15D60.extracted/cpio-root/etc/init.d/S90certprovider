@@ -1,0 +1,26 @@
+#!/bin/sh
+#
+
+source /tmp/ulsp/vpnca.config
+source /tmp/ulsp/openvpn.config
+source /tmp/ulsp/ipsec.config
+
+#if [ $OPT_OPENVPN = "none" ]; then
+#  if [ $IPSEC_MODE = "none" ]; then
+#    echo "Skipping CertProvider according to configuration!"
+#    exit 0
+#  fi
+#fi
+
+#if [ $IPSEC_USE_X509 = "no" ]; then
+#  echo "Skipping CertProvider according to configuration!"
+#  exit 0
+#fi
+
+# load and copy certificates
+# this must be done before the IPSec and/or OpenVPN check because it might be enabled 
+# by the user at runtime, and then needs the complete folder structure for the
+# web interface
+/usr/sbin/load certs
+
+exit 0

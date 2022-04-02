@@ -1,0 +1,23 @@
+#!/bin/sh
+#----------------------------------------------------------------------------
+# /etc/ppp/ip-up - called whenever a (i)ppp connection has been come up
+#
+# Creation:        03.03.2009
+# Last Update:     03.03.09 wrj
+#----------------------------------------------------------------------------
+export PPP_IFACE=$1
+export PPP_TTY=$2
+export PPP_SPEED=$3
+export PPP_LOCAL=$4
+export PPP_REMOTE=$5
+
+# run through ppp start scripts
+for i in /etc/ppp/ip-up.d/S??* ;do
+
+     # Ignore dangling symlinks (if any).
+     [ ! -f "$i" ] && continue
+	# start all the specific things
+	. $i
+done
+
+exit 0

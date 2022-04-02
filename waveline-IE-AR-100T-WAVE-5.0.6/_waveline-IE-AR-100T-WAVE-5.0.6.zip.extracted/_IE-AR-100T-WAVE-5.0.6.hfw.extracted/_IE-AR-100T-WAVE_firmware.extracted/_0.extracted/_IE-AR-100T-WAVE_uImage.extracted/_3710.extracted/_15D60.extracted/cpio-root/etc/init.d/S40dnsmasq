@@ -1,0 +1,115 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          dnsd
+# Required-Start:
+# Required-Stop:
+# Should-Start:
+# Should-Stop:
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start the dnsd nameserver.
+### END INIT INFO
+
+source /tmp/ulsp/network.config
+source /tmp/ulsp/name.config
+source /tmp/ulsp/dhcp.config
+
+# this must be done anyways
+if [ "$DNS_FORWARDERS" ]
+then
+	# write resolv.conf only if the nameserver new/different
+	if [ -z "$(grep $DNS_FORWARDERS /etc/resolv.conf)" ]
+	then
+		echo "nameserver $DNS_FORWARDERS"	>> /etc/resolv.conf
+	fi
+fi
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+NAME=dnsmasq
+DAEMON=/usr/sbin/$NAME
+DESC="ULSP Waveline Router"
+PIDFILE=/var/run/$NAME.pid
+SCRIPTNAME=/etc/init.d/$NAME
+
+test -x $DAEMON || exit 0
+
+firewallUp() {
+  iptables -A INPUT -p udp --dport 53 -j ACCEPT
+  iptables -A INPUT -i $DHCPD_INTERFACE -p udp --dport 67 --sport 68 -j ACCEPT
+}
+
+firewallDown() {
+  iptables -D INPUT -p udp --dport 53 -j ACCEPT
+  iptables -D INPUT -p udp --dport 67 --sport 68 -j ACCEPT
+}
+
+configure () {
+	# build up /etc/hosts for queries
+	echo -n                       > /etc/hosts
+	echo "127.0.0.1 localhost"   >> /etc/hosts
+	idx=0
+	while [ $idx -lt $HOST_N ]
+	do
+		idx=$(expr $idx + 1)
+
+		hostname=$(eval echo \$$(echo HOST_${idx}_NAME))
+		hostip=$(eval echo \$$(echo HOST_${idx}_IP))
+
+		echo "$hostip $hostname" >> /etc/hosts
+	done
+
+	# write /etc/dnsmasq.conf
+	echo -n                > /etc/dnsmasq.conf
+cat << DNSMASQ_DNS_CONFIG_EOF >> /etc/dnsmasq.conf
+domain-needed
+bogus-priv
+filterwin2k
+no-poll
+local=/$DOMAIN_NAME/
+expand-hosts
+domain=$DOMAIN_NAME
+DNSMASQ_DNS_CONFIG_EOF
+
+	[ $DHCPD_INTERFACE = "none" ] && return
+
+	lease_time=$(expr $DHCPD_LEASE_TIME / 60 / 60)
+
+cat << DNSMASQ_DHCPD_CONFIG_EOF >> /etc/dnsmasq.conf
+interface=$DHCPD_INTERFACE
+dhcp-range=${DHCPD_LEASE_START},${DHCPD_LEASE_END},${DHCPD_SUBNET},${lease_time}h
+dhcp-option=3,$DHCPD_GATEWAY
+dhcp-option=6,$DHCPD_DNS
+DNSMASQ_DHCPD_CONFIG_EOF
+
+}
+
+set -e
+
+case "$1" in
+    start)
+#       log_daemon_msg "Starting $DESC" $NAME
+        logger "Starting $DESC" $NAME
+        configure
+        start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE --exec $DAEMON
+        firewallUp
+        ;;
+    stop)
+#       log_daemon_msg "Stopping $DESC" $NAME
+        logger "Stopping $DESC" $NAME
+        firewallDown
+        start-stop-daemon --quiet --stop --oknodo --pidfile $PIDFILE --exec $DAEMON
+        ;;
+    restart|reload|force-reload)
+        $0 stop
+        sleep 1
+        $0 start
+        ;;
+    *)
+        echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
+        exit 1
+        ;;
+esac
+
+exit 0
+exit $?
+

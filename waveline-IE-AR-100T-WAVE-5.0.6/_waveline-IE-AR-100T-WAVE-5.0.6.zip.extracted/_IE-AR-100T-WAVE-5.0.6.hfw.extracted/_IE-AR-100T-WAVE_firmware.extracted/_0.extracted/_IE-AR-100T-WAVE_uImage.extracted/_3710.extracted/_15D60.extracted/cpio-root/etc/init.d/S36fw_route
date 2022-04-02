@@ -1,0 +1,132 @@
+#!/bin/sh
+#DEBUG='yes'
+
+# include configs
+CONFIG_DIR="/tmp/ulsp"
+
+source $CONFIG_DIR/static.config
+source $CONFIG_DIR/network.config
+
+valueOf() {
+	echo $(eval echo \$$1)
+}
+
+debug() {
+	if [ "$DEBUG" = "yes" ]
+	then
+		echo $1
+	fi	
+}
+
+clean() {
+	iptables -D FORWARD -p ALL -j routes
+	iptables -t nat -D POSTROUTING -p ALL -j routes_masq
+
+	iptables -F routes
+	iptables -t nat -F routes_masq
+
+	iptables -X routes
+	iptables -t nat -X routes_masq
+}
+
+configure() {
+	# unique hosts in ROUTE_NETWORK, MASQ_NETWORK
+	ROUTE_NETWORK=
+	MASQ_NETWORK=
+
+    # read eth0 address
+    ip=$(ip addr show eth0 | grep inet | grep global | cut -d" " -f6)
+
+    # this could be more than one address
+    set -- $ip
+    #ip_idx=1
+    #while [ $* ]
+    #do
+      eth0_network=$(ipcalc -n $1 | cut -d"=" -f2)
+      eth0_prefix=$(ipcalc -p $1 | cut -d"=" -f2)
+      shift 1
+
+      if [ "$IP_ETH0_MASQ" = "no" ]
+      then
+	     ROUTE_NETWORK="$ROUTE_NETWORK $eth0_network/$eth0_prefix"
+	  else
+	     MASQ_NETWORK="$MASQ_NETWORK $eth0_network/$eth0_prefix"
+      fi
+      
+    #  ip_idx=$(expr $ip_idx + 1)
+    #done
+
+	# read eth1 address
+    ip=$(ip addr show eth1 | grep inet | grep global | cut -d" " -f6)
+
+    # this could be more than one address
+    set -- $ip
+
+    eth1_prefix=$(ipcalc -p $1 | cut -d"=" -f2)
+    eth1_network=$(ipcalc -n $1 | cut -d"=" -f2)
+
+    if [ "$IP_ETH1_MASQ" = "no" ]
+	then
+	  ROUTE_NETWORK="$ROUTE_NETWORK $eth1_network/$eth1_prefix"
+	else
+	  MASQ_NETWORK="$MASQ_NETWORK $eth1_network/$eth1_prefix"
+    fi
+
+	idx=1
+	while [ "$idx" -le "$STATIC_ROUTE_N" ]
+	do
+        if [ $(valueOf STATIC_ROUTE_${idx}_MASQ) = "no" ]
+		then
+		  ROUTE_NETWORK="$ROUTE_NETWORK $(valueOf STATIC_ROUTE_${idx}_TARGET)"
+		else
+		  MASQ_NETWORK="$MASQ_NETWORK $(valueOf STATIC_ROUTE_${idx}_TARGET)"
+		fi
+
+		idx=$(expr $idx + 1)
+	done
+
+	debug "allow forwarding of pakets from hosts in MASQ_NETWORK and ROUTE_NETWORK"
+	iptables -N routes
+	iptables -A FORWARD -p ALL -j routes
+	for net in $ROUTE_NETWORK $MASQ_NETWORK
+	do
+		debug "FORWARD: $net"
+		iptables -A routes -s $net -j ACCEPT
+	done
+
+	debug "masquerade all hosts in MASQ_NETWORK"
+	iptables -t nat -N routes_masq
+	iptables -t nat -A POSTROUTING -p ALL -j routes_masq
+	for net in $MASQ_NETWORK
+	do
+		# masquerade all LAN adresses
+		debug "NAT: masquerade $net"
+		iptables -t nat -A routes_masq -s $net -j MASQUERADE
+	done
+}
+
+NAME=fw_routes
+DESC="iptables"
+SCRIPTNAME=/etc/init.d/S32$NAME
+
+case "$1" in
+    start)
+	  logger "Starting $DESC" $NAME
+	  configure
+      ;;
+    stop)
+	  logger "Stopping $DESC" $NAME
+	  clean
+      ;;
+    restart)
+	  logger "Reloading $DESC " $NAME
+	  clean
+	  configure
+      ;;
+    *)
+        echo "Usage: $SCRIPTNAME {start|stop|restart}" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

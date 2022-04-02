@@ -1,0 +1,167 @@
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta name="author" content="Henry Jesuiter, Enrico Kalliwoda">
+<meta name="description" content="English toc-page of the IAR / Heyfra GmbH">
+<meta name="date" content="2005-06-10 11:00:00">
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="cache-control" content="no-store">
+<meta http-equiv="expires" content="0">
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<title>Portfilter-Konfiguration </title>
+<link rel="stylesheet" type="text/css" href="css/stile.css" media="screen">
+<script type="text/javascript">
+<!--
+  function checkValues() {
+    document.portForm.submit();
+  }
+
+  function checkState() {
+    if(document.portForm.portfw.checked == true) {
+      document.portForm.port.disabled=false;
+      document.portForm.portfw_protocol.disabled=false;
+      document.portForm.destip.disabled=false;
+      document.portForm.port_list.disabled=false;
+      document.portForm.prot_list.disabled=false;
+      document.portForm.target_list.disabled=false;
+      document.portForm.AddPortFw_Button.disabled=false;
+      document.portForm.DelPortFw_Button.disabled=false;
+    } else {
+      document.portForm.port.disabled=true;
+      document.portForm.portfw_protocol.disabled=true;
+      document.portForm.destip.disabled=true;
+      document.portForm.port_list.disabled=true;
+      document.portForm.prot_list.disabled=true;
+      document.portForm.target_list.disabled=true;
+      document.portForm.AddPortFw_Button.disabled=true;
+      document.portForm.DelPortFw_Button.disabled=true;
+    }
+  }
+
+  function choose(index) {
+   for(i=0;i<document.portForm.denyport_list.length;++i) {
+       document.portForm.denyport_list.options[i].selected=false;
+       document.portForm.denyrule_list.options[i].selected=false;
+    }
+
+   document.portForm.denyport_list.options[index].selected=true;
+   document.portForm.denyrule_list.options[index].selected=true;
+  }
+
+  function addEntry() {
+    var port=document.portForm.denyport.value;
+    var rule=document.portForm.denyrule.options[document.portForm.denyrule.options.selectedIndex].text;
+    if (port.length != 0) {
+      var portarr = port.split(":");
+      if (((portarr.length==1) && !isNaN(port)) ||
+         ((portarr.length==2) && !isNaN(portarr[0]) && !isNaN(portarr[1]))) {
+        var newPort = new Option(port, port, false, false);
+        var newRule = new Option(rule, rule, false, false);
+        document.portForm.denyport_list.options[document.portForm.denyport_list.length]=newPort;
+        document.portForm.denyrule_list.options[document.portForm.denyrule_list.length]=newRule;
+        document.portForm.denyportlist.value = document.portForm.denyportlist.value + port + " ";
+        document.portForm.denyrulelist.value = document.portForm.denyrulelist.value + rule + " ";
+      } else {
+        alert("Please enter a port number or port range to add!");
+      }
+    } else {
+      alert("Please enter a port number or port range to add!");
+    }
+  }
+
+  function delEntry() {
+    if(document.portForm.denyport_list.selectedIndex != -1) {
+      var index=document.portForm.denyport_list.selectedIndex;
+
+      var ports=document.portForm.denyportlist.value;
+      var rules=document.portForm.denyrulelist.value;
+
+      var portArray=ports.split(" ");
+      var ruleArray=rules.split(" ");
+
+      var newports="";
+      var newrules="";
+      for (i=0; i<document.portForm.denyport_list.length; ++i) {
+        if (i != index) {
+	  newports = newports + portArray[i] + " ";
+	  newrules = newrules + ruleArray[i] + " ";
+	}
+      }
+
+      document.portForm.denyport_list.options[index]=null;
+      document.portForm.denyrule_list.options[index]=null;
+      document.portForm.denyportlist.value=newports;
+      document.portForm.denyrulelist.value=newrules;
+    } else {
+      alert("Please select an entry to delete!");
+    }
+  }
+
+//-->
+</script>
+</head>
+<body>
+<form action="config.cgi" method="post" target="Main" name="portForm">
+<input type="hidden" name="lang" value="englis">
+<input type="hidden" name="item" value="18">
+<input type="hidden" name="act" value="1">
+<fieldset><legend>Port filter</legend>
+<table>
+<tr>
+  <td>Port(s)</td>
+  <td><input type="text" size="10" maxlength="11" name="denyport"></td>
+    <td>port(range) of incoming packets</td>
+</tr>
+<tr>
+  <td>Action</td>
+  <td><select name="denyrule" size=1>
+    <option>accept</option>
+    <option>accept-tcp</option>
+    <option>accept-udp</option>
+    <option>drop</option>
+    <option>drop-tcp</option>
+    <option>drop-udp</option>
+    <option>reject</option>
+    <option>reject-tcp</option>
+    <option>reject-udp</option>
+  </select></td>
+    <td>how to treat packets arriving at this port</td></tr>
+<tr>
+  <td colspan="3"><input type="button" name="AddDenyPort_Button" value="Add" onclick="addEntry();"></td>
+</tr>
+</table>
+<hr>
+<table>
+<tr>
+  <th>filtered ports</th>
+</tr>
+<tr>
+  <td>port</td>
+  <td>action</td>
+</tr>
+<tr>
+  <td><select name="denyport_list" size=4  onchange="choose(document.portForm.denyport_list.selectedIndex);">{DENYOPTS}
+  </select></td>
+  <td><select name="denyrule_list" size=4  onchange="choose(document.portForm.denyrule_list.selectedIndex);">{RULEOPTS}
+  </select></td>
+</tr>
+<tr>
+  <td colspan="2">
+       <input type="button" name="DelDenyPort_Button" value="Delete" onclick="delEntry();">
+  </td>
+</tr>
+</table>
+</fieldset>
+  <input type="hidden" name="denyportlist" value="{DENYLIST}">
+  <input type="hidden" name="denyrulelist" value="{RULELIST}">
+<table align="right">
+<tr>
+  <td><input type="reset" name="Cancel_Button" value="Cancel"></td>
+  <td><input type="button" name="OK_Button" value="Apply" onclick="checkValues()"></td>
+</tr>
+</table>
+</form>
+</body>
+</html>

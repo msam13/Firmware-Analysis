@@ -1,0 +1,42 @@
+# values: one of 'none', 'peer', 'gateway'
+IPSEC_MODE='none'
+
+# values: one of 'eth0', 'eth1'
+IPSEC_PHYSICAL_ITF='eth1'
+
+# values: 'yes' or 'no'
+IPSEC_NAT_TRAVERSAL='yes'
+
+# values: 'yes' or 'no'
+IPSEC_USE_X509='yes'
+
+###################
+# Peer Mode only: #
+###################
+# The IP address of the remote IPSec Gateway.
+# values: 'a valid IP-ADDRESS'
+IPSEC_PR_GW_IP='192.168.2.100'
+IPSEC_PR_GW_PSK='secret'
+IPSEC_PR_P12_PASS=''
+
+######################
+# Gateway Mode only: #
+######################
+# The IPSec gateway should operate in the native mode.
+# values: 'yes' or 'no'
+IPSEC_GW_NATIV_MODE='yes'
+IPSEC_GW_NATIV_ADDR='10.8.0.10'
+IPSEC_GW_NATIV_MASK='255.255.255.0'
+IPSEC_GW_NATIV_POOL='25'
+IPSEC_GW_NATIV_DNS='10.8.0.254'
+IPSEC_GW_NATIV_WINS='10.8.0.254'
+
+# The IPSec gateway should operate with L2TP support.
+# values: 'yes' or 'no'
+IPSEC_GW_L2TP_MODE='yes'
+
+# The IPSec gateway is configured with the useage of PSK's.
+# The following section stores the IP-PSK relationship.
+# count of IPSec peers
+# value: integer, 0-127
+IPSEC_PEERS_N='0'
