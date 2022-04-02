@@ -1,0 +1,1 @@
+../../cgi-bin/video/video.cgi

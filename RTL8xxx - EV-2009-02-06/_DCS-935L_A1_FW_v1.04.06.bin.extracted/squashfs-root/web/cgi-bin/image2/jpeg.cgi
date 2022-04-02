@@ -1,0 +1,1 @@
+../../cgi-bin/image/jpeg.cgi
