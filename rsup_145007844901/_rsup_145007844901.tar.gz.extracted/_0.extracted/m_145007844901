@@ -1,0 +1,50 @@
+<version_info>
+<product build='145007844901' release='4.0.3' date='14-Dec-2015' downloadSize='90922' installationSize='95468'>
+<features>
+<feature notes='Improved WiFi management, Comm Bus improvements'/>
+</features>
+<fixes>
+<fix info='Security fixes, courtesy: Cisco Talos'/>
+<fix info=' Improved comm link reporting with 940'/>
+</fixes>
+<checksum></checksum>
+</product>
+<manifest filecontents='
+[MANIFEST_VERSION]
+1
+[DATA]
+a_145007844901=2002688,0x49de28c5251e87ffdae6d06b8cf76db6ec273e42
+b_145007844901=10627997,0x0e7f4766774c0909215e9099b2b058555afa9002
+c_145007844901=38993616,0x834ad43ac7e5dfe887b6bff3dae626146c798d2e
+d_145007844901=1854856,0x897cd439546583e88ccb05cef5cd74f5f9bf893a
+e_145007844901=445808,0xf92d39950b1ee91dca9d88edfa6ac24c47030ddd
+f_145007844901=450128,0x7b6914f561459f7c4fb5a94f129b0bab2e91d28a
+g_145007844901=43382752,0xe5c557e646583d43e5cd0fc8edb7eb6dd650895e
+m_145007844901=1368,0x6bc9ef4c9c23463e3e1531a92abdcb007d8a5d88
+v_145007844901=511,0xbc5a165e2d8470512fee2655d4362ffc99582c43
+[COMMENTS]
+Rel 4.0.3 = 145007844901
+
+[BUILDINFO]
+upgrade=1426070808
+operational=1450078449
+bootloader=1450083907
+manifest=01
+xxlupgrade=1421744669
+upgradesccdb=1381398358
+upgradehistorydb=1312564707
+conv.sccdb=1
+conv.scchistdb=1
+conv.ccidb=0
+conv.wifi=1426070808
+conv.dealerpic=1426070808
+conv.alarms=1426070808
+conv.ptrcal=1426070808
+
+[BOOTMESSAGE]
+TRAN=Welcome to Trane ComfortLink II Control
+AMST=Welcome to American Standard AccuLink Platinum ZV
+[END]
+'>
+</manifest>
+</version_info>
